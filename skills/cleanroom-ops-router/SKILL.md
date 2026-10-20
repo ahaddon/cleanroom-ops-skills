@@ -18,7 +18,6 @@ Single entry point so everyone starts the same way.
 
 1. If the user's request clearly names one workflow, confirm it in one line and go to step 3. Otherwise ask, with a multiple-choice prompt, exactly:
    - Build a question (`cleanroom-question-builder`)
-   - Run a question and check results (`cleanroom-question-runner`, not yet built)
-   - Set up a clean room, invite partners, provision datasets (`cleanroom-setup`, not yet built)
-2. If the chosen skill does not exist yet, say so plainly and stop.
-3. Invoke the chosen skill.
+   - Run a question and check results (`cleanroom-question-runner`)
+   - Set up a clean room, invite partners, provision datasets (`cleanroom-setup`)
+2. Invoke the chosen skill.

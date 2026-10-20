@@ -21,8 +21,8 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
 
 ## Pipeline
 
-1. **Check tools.** Confirm the `liveramp-cleanroom-mcp` question-creation tool is available (step 6 names it). If unavailable, continue steps 2-5 and finish with the fixed fallback in step 6.
-   *Exit:* tool availability recorded.
+1. **Check tools and organization.** Confirm `cleanroom_create_question`, `cleanroom_configure_question_datasets`, `cleanroom_get_question_by_id` and `cleanroom_get_datasets` are in the live tool list. Call `meta_get_active_org_ids`: one org means use it and say which; more than one means ask which before any other call. If unavailable, continue steps 2-5 and finish with the fixed fallback in step 6.
+   *Exit:* tool availability and `org_id` recorded.
 2. **Gather inputs.** Read `references/question-inputs.md`. Ask every applicable field in ONE message (use multiple-choice prompts for enumerable fields). Load any saved answers from `.cleanroom-ops-cache/<clean_room_id>/question_spec.json` as defaults, and say they are defaults.
    *Exit:* every required, applicable field has a value that passes the validation rules.
 3. **Write the spec.** Save the answers to `.cleanroom-ops-cache/<clean_room_id>/question_spec.json`.
@@ -32,20 +32,24 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
    python3 scripts/validate_question.py .cleanroom-ops-cache/<clean_room_id>/question.sql
    ```
    *Exit:* output ends with `PASS`. Warnings are shown to the user in step 5.
-5. **Review gate.** Present, in this exact order: (a) the inputs table, (b) the final SQL, (c) any validator warnings, (d) the macro-mapping checklist from field 7. Then ask exactly: "Create this question in this clean room? (yes / change something / stop)".
+5. **Review gate.** Present, in this exact order: (a) the inputs table, (b) the final SQL, (c) any validator warnings, (d) the dataset bindings from field 7. Then ask exactly: "Create this question in this clean room? (yes / change something / stop)".
    *Exit:* the user answered yes. "Change something" returns to step 2 for that field, then re-runs steps 3-5.
-6. **Create the question.** Use the clean-room MCP question-creation tool with the approved SQL and the title `<client_name> - Cross-Platform Exposure Mapping`.
-   *Tool name: TO BE FILLED once `liveramp-cleanroom-mcp` is connected and its tool list is read.* If the tool is absent, say exactly: "The question-creation tool isn't available on this server. The SQL is saved at `.cleanroom-ops-cache/<clean_room_id>/question.sql` for manual loading." and go to step 7.
-   *Exit:* creation succeeded and returned an id, or the fallback message was shown.
+6. **Create and bind the question** (tools are the `cleanroom_*` tools of `liveramp-cleanroom-mcp`; always pass the same `org_id` from `meta_get_active_org_ids`).
+   a. `cleanroom_create_question` with the approved SQL, title `<client_name> - Cross-Platform Exposure Mapping`, the fixed values from `question-inputs.md`, and `dataTypes` built from field 7 (each entry needs `macro`, `importDataType`, `datasetID`). The question lands in `MISSING_DATASETS`; it is not runnable yet.
+   b. `cleanroom_configure_question_datasets` with one entry per macro (`macro`, `datasetId`, plus `fields` if the question's data types declare fields). Leave `darForce` false; if analysis-rule validation rejects the binding, show the error and stop. Never retry with `darForce` true without the user asking.
+   c. `cleanroom_get_question_by_id` and confirm `status` is `READY`. If it is `MISSING_OWNER_DATASET_FIELDS` or similar, run `cleanroom_get_all_question_datasets`, show which fields are unmapped, and stop.
+   If `cleanroom_create_question` is absent from the tool list, say exactly: "The question-creation tool isn't available on this server. The SQL is saved at `.cleanroom-ops-cache/<clean_room_id>/question.sql` for manual loading." and go to step 7.
+   Save the returned question id to `question_spec.json`.
+   *Exit:* status is `READY`, or the fallback message was shown, or a stop condition above was reported.
 7. **Finalize (hard gate).** Before the last message, confirm each item and print the completion report:
    - [ ] spec saved
    - [ ] validator PASS
    - [ ] review gate answered yes
-   - [ ] question created (id) or fallback shown
-   - [ ] macro-mapping checklist given
+   - [ ] question created and `READY` (id) or fallback shown
+   - [ ] dataset bindings listed
    - [ ] next step offered: run the question via `cleanroom-question-runner` (once that skill exists)
 
-   Completion report sections, always in this order: Inputs, Question id or file path, Validator result, Macro-mapping checklist, Next step.
+   Completion report sections, always in this order: Inputs, Question id and status or file path, Validator result, Dataset bindings, Next step.
 
 ## References
 - `references/question-inputs.md` - field schema (read in step 2).

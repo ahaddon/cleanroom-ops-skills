@@ -17,13 +17,13 @@ Spec:
 ```
 Expected SQL: the template unchanged. Validator: PASS, no warnings.
 Question title: `Acme - Cross-Platform Exposure Mapping`.
-Not in the SQL: the meta date range (set as date parameters in the question editor) and the macro mappings.
+Not in the SQL: the meta date range (passed as run parameters) and the dataset bindings (field 7).
 
 ## Example 2: Amazon and Meta only
 
 Spec: `exposure_sources = ["amazon", "meta"]`, `digital_mapping` not asked (no `digital_pixel`).
 Expected edits: delete the `snowplow` and `dtv` CTEs and their two `UNION ALL` branches; keep `PivotedCuts`, `amazon`, `meta`, `unioned_exposures` (two branches) and the final SELECT unchanged.
-Validator: PASS. Edit the `@vma`/`@meta` datasets via the macro checklist only.
+Validator: PASS. Bind only the macros left in the SQL.
 
 ## Example 3: failure the validator must catch
 
