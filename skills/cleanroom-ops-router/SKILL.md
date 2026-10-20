@@ -16,7 +16,7 @@ Single entry point so everyone starts the same way.
 
 ## Pipeline
 
-1. If the user's request clearly names one workflow, confirm it in one line and go to step 3. Otherwise ask, with a multiple-choice prompt, exactly:
+1. If the user's request clearly names one workflow, confirm it in one line and go to step 2. Otherwise ask, with a multiple-choice prompt, exactly:
    - Build a question (`cleanroom-question-builder`)
    - Run a question and check results (`cleanroom-question-runner`)
    - Set up a clean room, invite partners, provision datasets (`cleanroom-setup`)
