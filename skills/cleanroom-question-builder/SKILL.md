@@ -40,7 +40,13 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
    ```
    The server reads `@macros` inside SQL comments, so commented-out blocks (an unused `digital_mapping`, `uber`, the VMA partition filter) make creation fail with "fields not defined in the question". Only `question.submit.sql` (no comments) is shown at the gate and sent in step 6. Build the dataset-bindings list (field 7) and any column-macro fields from the submit copy, never from the annotated copy.
    *Exit:* both validator runs end with `PASS`. Warnings (including any column macros needing declared fields) are shown to the user in step 5.
-5. **Review gate.** Present, in this exact order: (a) the inputs table, (b) the final submit SQL, (c) any validator warnings, (d) the dataset bindings from field 7. Then ask exactly: "Create this question in this clean room? (yes / change something / stop)".
+5. **Review gate.** Present, in this exact order: (a) the inputs table, (b) the **question setup summary table** (format below), (c) any validator warnings, (d) the final submit SQL. The summary table comes before the SQL so the user can check the setup at a glance. Then ask exactly: "Create this question in this clean room? (yes / change something / stop)".
+   **Question setup summary table.** One row per `@macro` in the submit SQL, in this exact column order: `Macro | Dataset name | Dataset ID | Creative join key | Property join key`. Build it as follows, never from memory:
+   - Macros, creative keys and property keys come from `python3 scripts/summarize_question.py <question.submit.sql>` (join keys are read from the SQL). Dataset name and ID come from the user's field 7 choices (`cleanroom_get_datasets`).
+   - Macros with no join key (for example the VMA mapping dataset, `meta_camp`, `meta_adset`, `meta_ad`, `adserver`) show `-` in both key columns.
+   - A key that is a column macro (for example `@uber.@creative_source_id`) shows the dataset column it is mapped to, for example `ad_id (mapped)`. If the mapping is not set yet, show `NOT MAPPED` and do not continue to the question prompt.
+   - Show the full dataset ID, then, after the table, one line: the question title, the clean room name, and `importDataType` (state it once if all rows share it).
+   - Mark the VMA mapping dataset row (`PROD Value Mapping...`) so it is easy to confirm.
    *Exit:* the user answered yes. "Change something" returns to step 2 for that field, then re-runs steps 3-5.
 6. **Create and bind the question** (tools are the `cleanroom_*` tools of `liveramp-cleanroom-mcp`; always pass the same `org_id` from `meta_get_active_org_ids`).
    a. `cleanroom_create_question` with the approved SQL, title `<client_name> - Cross-Platform Exposure Mapping`, the fixed values from `question-inputs.md`, and `dataTypes` built from field 7 (each entry needs `macro`, `importDataType`, `datasetID`). The question lands in `MISSING_DATASETS`; it is not runnable yet.
@@ -55,10 +61,10 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
    - [ ] validator PASS
    - [ ] review gate answered yes
    - [ ] question created and `READY` (id) or fallback shown
-   - [ ] dataset bindings listed
+   - [ ] setup summary table shown at the Review gate
    - [ ] next step offered: run the question via `cleanroom-question-runner` (once that skill exists)
 
-   Completion report sections, always in this order: Inputs, Question id and status or file path, Validator result, Dataset bindings, Next step.
+   Completion report sections, always in this order: Inputs, Question id and status or file path, Validator result, Setup summary table, Next step.
 
 ## References
 - `references/question-inputs.md` - field schema (read in step 2).

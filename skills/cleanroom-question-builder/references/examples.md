@@ -42,3 +42,19 @@ Symptom: `Query has the following fields which are not defined in the question: 
 Causes in order of likelihood: (1) commented-out source blocks left in the SQL, because the server reads `@macros` inside comments; (2) column macros not declared (or declared with different spelling) in `dataTypes[].dataSetTypeFields`.
 Expected behavior: submit copy has no comments (validator `--submit` PASS); column macros are listed as warnings and shown at the Review gate with the proposed column mapping; on this error the builder does one diagnosis pass and reports, never loops.
 
+## Example 6: setup summary table at the Review gate
+
+Default four sources (the template, comments stripped), datasets chosen. The table the builder shows before the SQL:
+
+| Macro | Dataset name | Dataset ID | Creative join key | Property join key |
+|---|---|---|---|---|
+| snowplow_exposures | <dataset name> | <full dataset id> | se._ds_ad_name | se._ds_placement_id |
+| adserver | <dataset name> | <full dataset id> | - | - |
+| vma (VMA mapping) | PROD Value Mapping ... | <full dataset id> | - | - |
+| amazon | <dataset name> | <full dataset id> | @amazon.ad_id | @amazon.ad_id |
+| dtv | <dataset name> | <full dataset id> | @dtv.PUBLISHER | @dtv.PUBLISHER |
+| meta | <dataset name> | <full dataset id> | @meta.ad_id | @meta.placement_type |
+| meta_camp / meta_adset / meta_ad | <dataset name> | <full dataset id> | - | - |
+
+Keys come from `scripts/summarize_question.py`. With `uber` or `digital_mapping` selected, their keys show the mapped dataset column (for example `ad_id (mapped)`).
+

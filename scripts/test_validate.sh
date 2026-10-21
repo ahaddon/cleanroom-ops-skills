@@ -32,4 +32,10 @@ python3 "$v" "$tmp/e.sql" --submit >/dev/null || { echo "prepared SQL should pas
 grep -q '@digital_mapping\|@uber' "$tmp/e.sql" && { echo "prepared SQL still contains commented-source macros"; exit 1; }
 grep -q 'BROADCAST' "$tmp/e.sql" || { echo "prepared SQL lost the BROADCAST hint"; exit 1; }
 
+# 7. Summarizer reads join keys from the SQL.
+python3 scripts/summarize_question.py "$tmp/e.sql" > "$tmp/sum.json"
+grep -q '"se._ds_ad_name"' "$tmp/sum.json" || { echo "summarizer missed snowplow creative key"; exit 1; }
+grep -q '"@meta.placement_type"' "$tmp/sum.json" || { echo "summarizer missed meta property key"; exit 1; }
+grep -q '"vma"' "$tmp/sum.json" || { echo "summarizer missed the vma macro"; exit 1; }
+
 echo PASS
