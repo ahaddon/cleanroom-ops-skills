@@ -35,3 +35,10 @@ Expected: `FAIL: LOCKED: PivotedCuts block was modified or removed`. Builder fix
 Datasets in the clean room: `PROD Value Mapping - Q3`, `PROD Value Mapping - Q4`, `Acme Amazon Exposure`, `Acme Meta Exposure`.
 Expected: for the `@vma` row the builder lists both `PROD Value Mapping` datasets first, marked as VMA mapping datasets, and asks the user to choose (two matches, so no default). The other datasets are listed below them.
 With a single match, that dataset is offered as the default. With no match, the builder stops and routes to `cleanroom-setup`.
+
+## Example 5: error the builder must prevent and diagnose
+
+Symptom: `Query has the following fields which are not defined in the question: digital_mapping -> creative_source_id, ...; uber -> ...`.
+Causes in order of likelihood: (1) commented-out source blocks left in the SQL, because the server reads `@macros` inside comments; (2) column macros not declared (or declared with different spelling) in `dataTypes[].dataSetTypeFields`.
+Expected behavior: submit copy has no comments (validator `--submit` PASS); column macros are listed as warnings and shown at the Review gate with the proposed column mapping; on this error the builder does one diagnosis pass and reports, never loops.
+

@@ -25,4 +25,11 @@ python3 "$v" "$tmp/c.sql" >/dev/null && { echo "expected FAIL on undefined sourc
 { cat "$tpl"; echo "-- ok"; echo "SELECT <CLEAN_ROOM_ID>"; } > "$tmp/d.sql"
 python3 "$v" "$tmp/d.sql" >/dev/null && { echo "expected FAIL on placeholder"; exit 1; }
 
+# 6. Raw template must fail --submit (comments contain @macros); prepared copy must pass it.
+python3 "$v" "$tpl" --submit >/dev/null && { echo "expected FAIL on --submit with comments"; exit 1; }
+python3 scripts/prepare_submit_sql.py "$tpl" "$tmp/e.sql"
+python3 "$v" "$tmp/e.sql" --submit >/dev/null || { echo "prepared SQL should pass --submit"; exit 1; }
+grep -q '@digital_mapping\|@uber' "$tmp/e.sql" && { echo "prepared SQL still contains commented-source macros"; exit 1; }
+grep -q 'BROADCAST' "$tmp/e.sql" || { echo "prepared SQL lost the BROADCAST hint"; exit 1; }
+
 echo PASS

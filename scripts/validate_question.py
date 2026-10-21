@@ -50,6 +50,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("generated")
     ap.add_argument("--template", default=str(DEFAULT_TEMPLATE))
+    ap.add_argument(
+        "--submit",
+        action="store_true",
+        help="also require a submit-ready file: no comments except /*+ hints (the server parses @macros inside comments)",
+    )
     args = ap.parse_args()
 
     tpl = norm(strip_comments(Path(args.template).read_text()))
@@ -91,6 +96,15 @@ def main() -> int:
     )
     for mac in sorted(set(MACRO_RE.findall(gen)) - tpl_macros):
         warnings.append(f"macro {mac} is not in the template; confirm it exists in the clean room config")
+
+    # 5b. Submit mode: comments must be gone; list column macros that need declared fields.
+    if args.submit:
+        leftover = re.sub(r"/\*\+.*?\*/", " ", gen_raw, flags=re.S)
+        if re.search(r"--|/\*", leftover):
+            errors.append("SUBMIT: SQL still contains comments (the server reads @macros inside comments); run scripts/prepare_submit_sql.py")
+        colmacros = sorted(set(re.findall(r"@([A-Za-z_][A-Za-z0-9_]*)\.@([A-Za-z_][A-Za-z0-9_]*)", gen)))
+        for tbl, col in colmacros:
+            warnings.append(f"column macro @{tbl}.@{col} needs '{col}' declared as a field on the '{tbl}' dataType")
 
     # 6. Placeholder left behind.
     if re.search(r"<[A-Z_ ]{3,}>|TODO|FIXME", gen_raw):

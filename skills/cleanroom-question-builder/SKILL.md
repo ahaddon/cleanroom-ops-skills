@@ -33,13 +33,20 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
    ```bash
    python3 scripts/validate_question.py .cleanroom-ops-cache/<clean_room_id>/question.sql
    ```
-   *Exit:* output ends with `PASS`. Warnings are shown to the user in step 5.
-5. **Review gate.** Present, in this exact order: (a) the inputs table, (b) the final SQL, (c) any validator warnings, (d) the dataset bindings from field 7. Then ask exactly: "Create this question in this clean room? (yes / change something / stop)".
+   Then make the submit copy and validate it too:
+   ```bash
+   python3 scripts/prepare_submit_sql.py .cleanroom-ops-cache/<clean_room_id>/question.sql .cleanroom-ops-cache/<clean_room_id>/question.submit.sql
+   python3 scripts/validate_question.py .cleanroom-ops-cache/<clean_room_id>/question.submit.sql --submit
+   ```
+   The server reads `@macros` inside SQL comments, so commented-out blocks (an unused `digital_mapping`, `uber`, the VMA partition filter) make creation fail with "fields not defined in the question". Only `question.submit.sql` (no comments) is shown at the gate and sent in step 6. Build the dataset-bindings list (field 7) and any column-macro fields from the submit copy, never from the annotated copy.
+   *Exit:* both validator runs end with `PASS`. Warnings (including any column macros needing declared fields) are shown to the user in step 5.
+5. **Review gate.** Present, in this exact order: (a) the inputs table, (b) the final submit SQL, (c) any validator warnings, (d) the dataset bindings from field 7. Then ask exactly: "Create this question in this clean room? (yes / change something / stop)".
    *Exit:* the user answered yes. "Change something" returns to step 2 for that field, then re-runs steps 3-5.
 6. **Create and bind the question** (tools are the `cleanroom_*` tools of `liveramp-cleanroom-mcp`; always pass the same `org_id` from `meta_get_active_org_ids`).
    a. `cleanroom_create_question` with the approved SQL, title `<client_name> - Cross-Platform Exposure Mapping`, the fixed values from `question-inputs.md`, and `dataTypes` built from field 7 (each entry needs `macro`, `importDataType`, `datasetID`). The question lands in `MISSING_DATASETS`; it is not runnable yet.
    b. `cleanroom_configure_question_datasets` with one entry per macro (`macro`, `datasetId`, plus `fields` if the question's data types declare fields). Leave `darForce` false; if analysis-rule validation rejects the binding, show the error and stop. Never retry with `darForce` true without the user asking.
    c. `cleanroom_get_question_by_id` and confirm `status` is `READY`. If it is `MISSING_OWNER_DATASET_FIELDS` or similar, run `cleanroom_get_all_question_datasets`, show which fields are unmapped, and stop.
+   **Column macros.** If the validator warned about `@table.@column` macros, that table's `dataTypes` entry must declare each column as `dataSetTypeFields` (see `references/question-inputs.md` -> "Column macros"). If `cleanroom_create_question` returns "fields which are not defined in the question", stop after one diagnosis pass: (1) confirm the submit copy has no comments, (2) compare the declared field names to the error text character for character, (3) read-only: look at how an existing question in this clean room declares them. Do not retry blindly more than once, and never loop. Report what was tried and the exact error.
    If `cleanroom_create_question` is absent from the tool list, say exactly: "The question-creation tool isn't available on this server. The SQL is saved at `.cleanroom-ops-cache/<clean_room_id>/question.sql` for manual loading." and go to step 7.
    Save the returned question id to `question_spec.json`.
    *Exit:* status is `READY`, or the fallback message was shown, or a stop condition above was reported.

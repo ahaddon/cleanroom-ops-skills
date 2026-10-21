@@ -25,6 +25,15 @@ The VMA mapping dataset's name always starts with `PROD Value Mapping`. When lis
 
 Fixed values, never asked: category `Analytics`, outputFormat `CODE_OUTPUT`, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` true, `hasDateParameters` true when `meta` is selected (parameters `START_DATE` and `END_DATE`, type date).
 
+## Column macros (`@table.@column`)
+
+Active SQL that uses `@table.@column` (the template's `digital_mapping` and `uber` blocks) needs more than a dataset binding: every column macro must be declared as a field on that table's `dataTypes` entry (`dataSetTypeFields`: `name` = the column macro name, `type` = the column type), and mapped to a real dataset column in `configure_question_datasets` `fields` (`name` = the macro name, `value` = the dataset column).
+
+- Propose the mapping from the dataset's own field names (`cleanroom_get_dataset_by_id`), show it at the Review gate, and let the user correct it. Never apply a guessed mapping without showing it.
+- Template macros per source: `digital_mapping` -> `creative_source_id`, `creative_name`, `placement_name`, `campaign_name`; `uber` -> `creative_source_id`, `property_source_id`.
+- Plain table macros like `@snowplow_exposures` or `@amazon` (with ordinary columns after the dot) need no fields.
+- Not yet confirmed: how the server wants these declared. A first attempt that declared them as `dataSetTypeFields` was rejected with "fields which are not defined in the question: digital_mapping -> ..., uber -> ...". That attempt also sent SQL with comments, so retest with the comment-free submit copy first. Record the working shape here after a live trial.
+
 ## Organization UUID (`organizationID` on create): never ask for it first
 
 `cleanroom_create_question` needs `organizationID`, the UUID of the working organization (the org named by `meta_get_active_org_ids`). That tool returns only a ULID (`org_id`) and a name, so the UUID must be looked up. Users are never asked for it unless every step below fails. Resolve in this order and stop at the first hit:
