@@ -24,7 +24,7 @@ Run a clean-room question and check its output the same way every time. Tools ar
    *Exit:* tools and `org_id` recorded.
 2. **Gather inputs.** Read `references/run-inputs.md`. If the question id is in `.cleanroom-ops-cache/<clean_room_id>/question_spec.json`, offer it as the default. Otherwise list questions with `cleanroom_get_all_questions` and let the user pick.
    *Exit:* every required field has a value.
-3. **Verify the question.** `cleanroom_get_question_by_id`: status must be `READY`, and every parameter the question defines must have a value (for Meta questions: `START_DATE`, `END_DATE`).
+3. **Verify the question.** `cleanroom_get_question_by_id`: status must be `READY`, and every parameter the question defines must have a value. Date parameters (`START_DATE`, `END_DATE`) come from the question's Date Parameters toggle; ask for them as dates and pass them under the names the question reports. If the question reports none but the toggle is on, ask the user once and record the working names in `references/run-inputs.md`.
    *Exit:* READY and parameters complete.
 4. **Run gate.** Show question name, run name, parameters and organization. Ask exactly: "Run this question now? (yes / change something / stop)".
    *Exit:* yes.

@@ -11,7 +11,7 @@ Template: `cross-platform-exposure-mapping.sql`. Locked regions (never edited): 
 | 3 | `exposure_sources` | multi-select | yes (at least 1) | `digital_pixel`, `amazon`, `dtv`, `meta`, `uber` | `digital_pixel`, `amazon`, `meta`, `dtv` | Keep the CTE and its `UNION ALL` branch for each selected source; remove (not just comment) the rest. `uber` is a commented block in the template; uncomment it only when selected |
 | 4 | `digital_mapping` | single-select | yes if `digital_pixel` selected | `adserver` (default join) or `premapped_file` | `adserver` | `premapped_file` enables the commented `digital_mapping` and `digital_joined` CTEs and unions `digital_joined` instead of `snowplow` |
 | 5 | `vma_partition_filter` | boolean | yes | yes / no | no | yes = enable the `bfmt_partition` filter in `PivotedCuts` using `clean_room_id`. This is a comment toggle, not an edit to `PivotedCuts` logic |
-| 6 | `meta_date_range` | start/end date | yes if `meta` selected | `YYYY-MM-DD` | none | Not written into the SQL. The `@START_DATE`/`@END_DATE` macros stay as-is; values are set as date parameters in the question editor |
+| 6 | `meta_date_range` | start/end date | yes if `meta` selected | `YYYY-MM-DD` | none | Not written into the SQL. The `@START_DATE`/`@END_DATE` macros stay as-is; the Date Parameters toggle is on (`hasDateParameters: true`) and the dates are supplied when the question is run |
 | 7 | `dataset_bindings` | table | yes, one row per `@macro` in the final SQL | `macro`, `dataset` (pick from the clean room's CONFIGURED datasets), `importDataType` (default `Generic`) | none | Not written into the SQL. Becomes `dataTypes` on create and the bindings on `configure_question_datasets`. Macros are listed from the final SQL by the builder, never typed by the user |
 
 ## VMA mapping dataset (field 7, the `@vma` macro)
@@ -23,7 +23,9 @@ The VMA mapping dataset's name always starts with `PROD Value Mapping`. When lis
 - A match must still have `configurationStatus = CONFIGURED`. A prefix match that is not CONFIGURED is shown with its status and cannot be selected.
 - Never hardcode a dataset id or the full dataset name; only the prefix is fixed.
 
-Fixed values, never asked: category `Analytics`, outputFormat `CODE_OUTPUT`, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` true, `hasDateParameters` true when `meta` is selected (parameters `START_DATE` and `END_DATE`, type date).
+Fixed values, never asked: category `Analytics`, outputFormat `CODE_OUTPUT`, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` true, `hasDateParameters` true when `meta` is selected.
+
+**Date parameters: only set the toggle (`hasDateParameters: true`). Never add `START_DATE` or `END_DATE` to the `parameters` array.** The server creates `START_DATE` and `END_DATE` itself when the toggle is on; declaring them again produces duplicate parameters in the question editor. Send `parameters` as an empty array (the default) for the exposure mapping template.
 
 ## Column macros (`@table.@column`)
 
@@ -51,7 +53,7 @@ Never use the clean room owner's UUID unless the owner is the active org (step 3
 
 ## Unconfirmed until the first live trial
 - Which `importDataType` each macro needs (`Generic` is the starting default).
-- Whether the question-level date parameters need extra settings beyond `hasDateParameters`.
+- How the date values must be passed when running the question (parameter names the run expects); check `cleanroom_get_question_by_id` after creation and record it here.
 Record confirmed answers in `examples.md` after the trial.
 
 ## Validation rules

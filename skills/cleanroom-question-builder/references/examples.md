@@ -58,3 +58,9 @@ Default four sources (the template, comments stripped), datasets chosen. The tab
 
 Keys come from `scripts/summarize_question.py`. With `uber` or `digital_mapping` selected, their keys show the mapped dataset column (for example `ad_id (mapped)`).
 
+## Example 7: date parameters
+
+Meta selected. Expected create payload: `hasDateParameters: true`, `parameters: []`. Not expected: any `parameters` entry named `START_DATE` or `END_DATE`.
+Why: the toggle already creates `START_DATE` and `END_DATE`; declaring them as well leaves duplicates in the question's Parameters panel (confirmed by a screenshot of a question created that way).
+After creation, `cleanroom_get_question_by_id` must show each date parameter once.
+
