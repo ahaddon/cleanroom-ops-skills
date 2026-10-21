@@ -30,3 +30,4 @@ Modeled on `coreydevin/intelligence-mcp-xmi` (thin `SKILL.md` with numbered rule
 - Never change macro names in the question template; only the underlying column mapping in the clean room config changes.
 - Live trial against a sandbox clean room before a change counts as done. Do not simulate.
 - Per-clean-room cache and any client data stay gitignored.
+- Never ask users for an id (UUID, dataset id, org id) that a tool can supply. If a lookup can fail, give the skill an ordered fallback chain, cache the result in `.cleanroom-ops-cache/`, and ask only as the last step. Open improvement for the MCP owners: return the organization UUID from `meta_get_active_org_ids`.

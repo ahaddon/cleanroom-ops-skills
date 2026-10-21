@@ -18,12 +18,13 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
 7. **No write without confirmation.** Creating or updating a question in a clean room requires the Review gate (step 5) to be answered "yes" for that exact SQL. A "yes" never carries over to a later change.
 8. **Name only tools present in the live tool list** (match the `cleanroom_*` suffix; real names carry a server prefix). If the tool needed in step 6 is absent, stop with the fixed message in step 6; do not improvise another path.
 9. **VMA dataset candidates always include datasets whose name starts with `PROD Value Mapping`**, listed first, per `references/question-inputs.md` -> "VMA mapping dataset". Never hardcode a dataset id.
-10. **Plain output.** Show the user the inputs, the SQL, and results of the checks. Do not narrate internals or offer extras.
+10. **Never ask the user for an id a tool can supply.** The one id that needs a lookup is `organizationID`; resolve it with the ordered steps in `references/question-inputs.md` -> "Organization UUID", and ask only as the last step, once.
+11. **Plain output.** Show the user the inputs, the SQL, and results of the checks. Do not narrate internals or offer extras.
 
 ## Pipeline
 
-1. **Check tools and organization.** Confirm `cleanroom_create_question`, `cleanroom_configure_question_datasets`, `cleanroom_get_question_by_id` and `cleanroom_get_datasets` are in the live tool list. Call `meta_get_active_org_ids`: one org means use it and say which; more than one means ask which before any other call. If unavailable, continue steps 2-5 and finish with the fixed fallback in step 6.
-   *Exit:* tool availability and `org_id` recorded.
+1. **Check tools and organization.** Confirm `cleanroom_create_question`, `cleanroom_configure_question_datasets`, `cleanroom_get_question_by_id` and `cleanroom_get_datasets` are in the live tool list. Call `meta_get_active_org_ids`: one org means use it and say which; more than one means ask which before any other call. Then resolve `organizationID` (UUID) per `references/question-inputs.md`; do it now so a missing UUID never interrupts step 6. If unavailable, continue steps 2-5 and finish with the fixed fallback in step 6.
+   *Exit:* tool availability, `org_id` and `organizationID` recorded.
 2. **Gather inputs.** Read `references/question-inputs.md`. Ask every applicable field in ONE message (use multiple-choice prompts for enumerable fields). Load any saved answers from `.cleanroom-ops-cache/<clean_room_id>/question_spec.json` as defaults, and say they are defaults.
    *Exit:* every required, applicable field has a value that passes the validation rules.
 3. **Write the spec.** Save the answers to `.cleanroom-ops-cache/<clean_room_id>/question_spec.json`.

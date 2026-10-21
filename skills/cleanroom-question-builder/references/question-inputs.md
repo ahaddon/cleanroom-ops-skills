@@ -25,6 +25,16 @@ The VMA mapping dataset's name always starts with `PROD Value Mapping`. When lis
 
 Fixed values, never asked: category `Analytics`, outputFormat `CODE_OUTPUT`, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` true, `hasDateParameters` true when `meta` is selected (parameters `START_DATE` and `END_DATE`, type date).
 
+## Organization UUID (`organizationID` on create): never ask for it first
+
+`cleanroom_create_question` needs `organizationID`, the UUID of the working organization (the org named by `meta_get_active_org_ids`). That tool returns only a ULID (`org_id`) and a name, so the UUID must be looked up. Users are never asked for it unless every step below fails. Resolve in this order and stop at the first hit:
+1. **Cache.** `.cleanroom-ops-cache/org.json`, keyed by the active `org_id`.
+2. **Partner list.** `cleanroom_get_all_partners` for the clean room; use the entry whose `name` equals the active org's name; its `organizationId` is the UUID. This call needs the PartnerManagement permission and returns 403 without it, which is not an error for the user: go to the next step.
+3. **Owner shortcut.** Only if `cleanroom_get_by_id` shows `ownerOrganization` equals the active org's name: take `ownerOrganizationId` from `cleanroom_get_question_by_id` on any existing question in that clean room (read it from the first page of `cleanroom_get_all_questions`).
+4. **Ask once, in plain words.** "I couldn't look up your organization's UUID automatically. Please paste it once (your LiveRamp admin can provide it) and I'll remember it." Save the answer to `org.json`.
+
+Never use the clean room owner's UUID unless the owner is the active org (step 3). Existing questions in a clean room owned by another organization carry that owner's UUID, not yours. Record the result in the cache with the org name, and never show the UUID back to the user beyond one confirmation line.
+
 ## Pre-flight facts to confirm for the clean room (ask once, store in the cache)
 - Datasets for each selected source are already in the clean room with `configurationStatus = CONFIGURED` (read with `cleanroom_get_datasets`). If not, stop and route to `cleanroom-setup`.
 - VMA dataset (`@vma`, and `@vma_partition` if field 5 = yes) is present. See "VMA mapping dataset" above.
