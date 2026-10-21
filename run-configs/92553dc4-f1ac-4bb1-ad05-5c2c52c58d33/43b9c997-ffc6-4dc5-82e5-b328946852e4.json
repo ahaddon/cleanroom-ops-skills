@@ -1,0 +1,11 @@
+{
+  "clean_room_id": "92553dc4-f1ac-4bb1-ad05-5c2c52c58d33",
+  "clean_room_name": "Citibank",
+  "question_id": "43b9c997-ffc6-4dc5-82e5-b328946852e4",
+  "question_title": "Cross-platform exposure mapping (CRQ-234358)",
+  "partitions": {
+    "snowplow_exposures.app_id": "citi-d4f85824-1351-4554-91ff-fdb56f962c5c",
+    "uber.brand": "Publicis - Citi - US - Uber Tech,Citi,Publicis - Citi - US - UTI - USD,Citi Bank,Spark Foundry - Citi - US - UTI - USD"
+  },
+  "updated_at": "2026-10-21"
+}
