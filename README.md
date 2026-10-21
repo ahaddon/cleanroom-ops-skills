@@ -9,6 +9,8 @@ Claude Code skills that walk you through clean-room operations the same way ever
 | `cleanroom-question-runner` | Runs a READY question, waits for it, pulls the rows and applies a fixed set of result checks |
 | `cleanroom-setup` | Creates a clean room, adds users, provisions datasets and invites partners, with a plan first and a confirmation before each outward-facing step |
 
+New tester? Follow [docs/tester-guide.md](docs/tester-guide.md) for the full step-by-step process in Claude Desktop.
+
 ## Setup
 
 1. Install [Claude Code](https://claude.com/claude-code) (CLI, desktop app or IDE extension).
