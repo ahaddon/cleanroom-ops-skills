@@ -16,4 +16,6 @@ Format:
 }
 ```
 
+Keys are the exact `<macro>.<field>` names the run API takes (for example `snowplow_exposures.app_id`, `uber.brand`); the runner submits them as-is. Multi-value fields such as `uber.brand` are one string, values joined by a bare comma. Date keys and `vma.bfmt_partition` are not stored here; see `skills/cleanroom-question-runner/references/partition-parameters.md`.
+
 Teammates get changes by `git pull`. After the runner updates a file, commit and push it (the runner reminds the user; it never pushes). Check files with `python3 scripts/check_run_configs.py`.

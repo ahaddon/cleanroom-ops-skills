@@ -66,5 +66,5 @@ After creation, `cleanroom_get_question_by_id` must show each date parameter onc
 
 ## Example 8: dates at run time
 
-Runner asks once for `start_date` = 2026-09-01 and `end_date` = 2026-09-30 and submits `{"start_date": "2026-09-01", "end_date": "2026-09-30"}`. The one pair applies to every exposure source's date partition. The runner does not ask about non-date partition values (such as an app id or brand); those are dataset settings.
+Runner asks once for `start_date` = 2026-09-01 and `end_date` = 2026-09-30 and fans the one pair out to `START_DATE` / `END_DATE` plus every source's own `_start` / `_end` partition key (for example `amazon.record_date_start` = `2026-09-01 00:00:00`). Non-date values (app id, brand) come from `run-configs/`, and `vma.bfmt_partition` is a constant. The server does not derive any of these. Full list: `skills/cleanroom-question-runner/references/partition-parameters.md`.
 

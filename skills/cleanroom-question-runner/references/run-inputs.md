@@ -12,4 +12,4 @@ Ask exactly these, in this order, in one message. Field 3 is asked only when the
 
 Validation: field 2 must be `READY`; dates must be valid, end on or after start. Non-date partition values (for example a source's app id or brand) are run inputs, saved per question in `run-configs/` and shown as defaults at every run. Dates are never saved; ask for them at every run.
 
-Unconfirmed: how partition values are submitted (`cleanroom_create_question_run` takes only `name` and a string `parameters` map). After the first live run, read the run back with `cleanroom_get_question_run_by_id` and record the working key names here.
+Submission: dates and partition values go in the `parameters` map under fixed, source-specific keys (for example `amazon.record_date_start`). The server does not derive them from the run dates. The full key list, value formats and an example are in `partition-parameters.md`; build the map from that file.

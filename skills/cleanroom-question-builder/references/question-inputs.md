@@ -53,7 +53,7 @@ Never use the clean room owner's UUID unless the owner is the active org (step 3
 
 ## Unconfirmed until the first live trial
 - Which `importDataType` each macro needs (`Generic` is the starting default).
-- Confirmed from the run UI: run-time dates are submitted as `start_date` and `end_date` and the server derives each source's date partition from them (a run showed amazon, snowplow and uber partition start/end all equal to the entered dates).
+- Run-time dates are the runner's job, not the builder's. The server does not derive each source's date partition from the run dates; the runner submits every `<macro>.<field>_start` / `_end` key itself. See `skills/cleanroom-question-runner/references/partition-parameters.md`.
 Record confirmed answers in `examples.md` after the trial.
 
 ## Validation rules
