@@ -9,15 +9,15 @@ Spec:
 {
   "clean_room_id": "00000000-0000-0000-0000-000000000000",
   "client_name": "Acme",
-  "exposure_sources": ["digital_pixel", "amazon", "meta", "dtv"],
+  "exposure_sources": ["digital_pixel", "amazon", "meta"],
   "digital_mapping": "adserver",
   "vma_partition_filter": false,
-  "meta_date_range": {"start": "2026-01-01", "end": "2026-03-31"}
+  "report_date_range": {"start": "2026-01-01", "end": "2026-03-31"}
 }
 ```
 Expected SQL: the template unchanged. Validator: PASS, no warnings.
 Question title: `Acme - Cross-Platform Exposure Mapping`.
-Not in the SQL: the meta date range (passed as run parameters) and the dataset bindings (field 7).
+Not in the SQL: the report date range (passed as run parameters) and the dataset bindings (field 7).
 
 ## Example 2: Amazon and Meta only
 
@@ -29,3 +29,9 @@ Validator: PASS. Bind only the macros left in the SQL.
 
 Spec as example 1, but someone changes `'custom_cut_1'` in `PivotedCuts`.
 Expected: `FAIL: LOCKED: PivotedCuts block was modified or removed`. Builder fixes the SQL and re-validates; it never shows the failing SQL as final.
+
+## Example 4: choosing the VMA mapping dataset
+
+Datasets in the clean room: `PROD Value Mapping - Q3`, `PROD Value Mapping - Q4`, `Acme Amazon Exposure`, `Acme Meta Exposure`.
+Expected: for the `@vma` row the builder lists both `PROD Value Mapping` datasets first, marked as VMA mapping datasets, and asks the user to choose (two matches, so no default). The other datasets are listed below them.
+With a single match, that dataset is offered as the default. With no match, the builder stops and routes to `cleanroom-setup`.

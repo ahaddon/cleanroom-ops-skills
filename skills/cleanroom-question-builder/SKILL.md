@@ -17,7 +17,8 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
 6. **Validate before showing and before writing.** `scripts/validate_question.py` must print PASS. On FAIL, fix the SQL and re-run; never present SQL that has not passed.
 7. **No write without confirmation.** Creating or updating a question in a clean room requires the Review gate (step 5) to be answered "yes" for that exact SQL. A "yes" never carries over to a later change.
 8. **Name only tools present in the live tool list** (match the `cleanroom_*` suffix; real names carry a server prefix). If the tool needed in step 6 is absent, stop with the fixed message in step 6; do not improvise another path.
-9. **Plain output.** Show the user the inputs, the SQL, and results of the checks. Do not narrate internals or offer extras.
+9. **VMA dataset candidates always include datasets whose name starts with `PROD Value Mapping`**, listed first, per `references/question-inputs.md` -> "VMA mapping dataset". Never hardcode a dataset id.
+10. **Plain output.** Show the user the inputs, the SQL, and results of the checks. Do not narrate internals or offer extras.
 
 ## Pipeline
 

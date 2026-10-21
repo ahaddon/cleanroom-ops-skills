@@ -14,11 +14,20 @@ Template: `cross-platform-exposure-mapping.sql`. Locked regions (never edited): 
 | 6 | `meta_date_range` | start/end date | yes if `meta` selected | `YYYY-MM-DD` | none | Not written into the SQL. The `@START_DATE`/`@END_DATE` macros stay as-is; values are set as date parameters in the question editor |
 | 7 | `dataset_bindings` | table | yes, one row per `@macro` in the final SQL | `macro`, `dataset` (pick from the clean room's CONFIGURED datasets), `importDataType` (default `Generic`) | none | Not written into the SQL. Becomes `dataTypes` on create and the bindings on `configure_question_datasets`. Macros are listed from the final SQL by the builder, never typed by the user |
 
+## VMA mapping dataset (field 7, the `@vma` macro)
+
+The VMA mapping dataset's name always starts with `PROD Value Mapping`. When listing candidate datasets for the `@vma` row:
+- Always include every dataset whose name starts with `PROD Value Mapping` (case-insensitive match on that prefix), read from `cleanroom_get_datasets`.
+- List those first and mark them as the VMA mapping datasets. Other CONFIGURED datasets may still appear below them, since the user may need a different one.
+- If exactly one dataset matches the prefix, offer it as the default for `@vma`. If several match, ask the user to choose and do not pick one. If none match, say so plainly and stop; route to `cleanroom-setup` to provision it.
+- A match must still have `configurationStatus = CONFIGURED`. A prefix match that is not CONFIGURED is shown with its status and cannot be selected.
+- Never hardcode a dataset id or the full dataset name; only the prefix is fixed.
+
 Fixed values, never asked: category `Analytics`, outputFormat `CODE_OUTPUT`, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` true, `hasDateParameters` true when `meta` is selected (parameters `START_DATE` and `END_DATE`, type date).
 
 ## Pre-flight facts to confirm for the clean room (ask once, store in the cache)
 - Datasets for each selected source are already in the clean room with `configurationStatus = CONFIGURED` (read with `cleanroom_get_datasets`). If not, stop and route to `cleanroom-setup`.
-- VMA dataset (`@vma`, and `@vma_partition` if field 5 = yes) is present.
+- VMA dataset (`@vma`, and `@vma_partition` if field 5 = yes) is present. See "VMA mapping dataset" below.
 - The working organization (`meta_get_active_org_ids`); never switch mid-task without the user confirming.
 
 ## Unconfirmed until the first live trial
