@@ -27,7 +27,7 @@ Fixed values, never asked: category `Analytics`, outputFormat `CODE_OUTPUT`, que
 
 ## Pre-flight facts to confirm for the clean room (ask once, store in the cache)
 - Datasets for each selected source are already in the clean room with `configurationStatus = CONFIGURED` (read with `cleanroom_get_datasets`). If not, stop and route to `cleanroom-setup`.
-- VMA dataset (`@vma`, and `@vma_partition` if field 5 = yes) is present. See "VMA mapping dataset" below.
+- VMA dataset (`@vma`, and `@vma_partition` if field 5 = yes) is present. See "VMA mapping dataset" above.
 - The working organization (`meta_get_active_org_ids`); never switch mid-task without the user confirming.
 
 ## Unconfirmed until the first live trial
