@@ -7,6 +7,9 @@ Ask exactly these, in this order, in one message. Field 3 is asked only when the
 | 1 | `clean_room_id` | string | yes | UUID | from `question_spec.json` if present |
 | 2 | `question` | single-select | yes | list from `cleanroom_get_all_questions`; show title and status only | `question_id` in `question_spec.json` if present |
 | 3 | `start_date`, `end_date` | dates | yes when the question has date parameters | `YYYY-MM-DD`; submitted as `start_date` and `end_date`; one pair for all exposure sources | none |
-| 4 | `run_name` | string | yes | free text | `<question title> - <YYYY-MM-DD>` |
+| 4 | `partition_values` | key/value, one per non-date partition field | yes for each partition field the datasets expose | defaults from `run-configs/<clean_room_id>/<question_id>.json`; first run: ask once per field | saved values, else none |
+| 5 | `run_name` | string | yes | free text | `<question title> - <YYYY-MM-DD>` |
 
-Validation: field 2 must be `READY`; dates must be valid, end on or after start. Partition values that are not dates (for example an app id or brand on a source dataset) are dataset settings, not run inputs; do not ask for them.
+Validation: field 2 must be `READY`; dates must be valid, end on or after start. Non-date partition values (for example a source's app id or brand) are run inputs, saved per question in `run-configs/` and shown as defaults at every run. Dates are never saved; ask for them at every run.
+
+Unconfirmed: how partition values are submitted (`cleanroom_create_question_run` takes only `name` and a string `parameters` map). After the first live run, read the run back with `cleanroom_get_question_run_by_id` and record the working key names here.

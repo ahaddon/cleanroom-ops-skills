@@ -38,4 +38,13 @@ grep -q '"se._ds_ad_name"' "$tmp/sum.json" || { echo "summarizer missed snowplow
 grep -q '"@meta.placement_type"' "$tmp/sum.json" || { echo "summarizer missed meta property key"; exit 1; }
 grep -q '"vma"' "$tmp/sum.json" || { echo "summarizer missed the vma macro"; exit 1; }
 
+# 8. Run-config checker: good file passes; date-like partition fails.
+rc="$tmp/rc/11111111-1111-4111-8111-111111111111"; mkdir -p "$rc"
+good='{"clean_room_id":"11111111-1111-4111-8111-111111111111","clean_room_name":"X","question_id":"22222222-2222-4222-8222-222222222222","question_title":"T","partitions":{"uber.brand":"A,B"},"updated_at":"2026-10-21"}'
+echo "$good" > "$rc/22222222-2222-4222-8222-222222222222.json"
+python3 scripts/check_run_configs.py "$tmp/rc" >/dev/null || { echo "good run-config should pass"; exit 1; }
+echo "${good/uber.brand/uber.event_date_start}" > "$rc/22222222-2222-4222-8222-222222222222.json"
+python3 scripts/check_run_configs.py "$tmp/rc" >/dev/null && { echo "date-like partition should fail"; exit 1; }
+python3 scripts/check_run_configs.py >/dev/null || { echo "repo run-configs should pass"; exit 1; }
+
 echo PASS

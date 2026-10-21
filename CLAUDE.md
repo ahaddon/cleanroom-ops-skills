@@ -29,5 +29,5 @@ Modeled on `coreydevin/intelligence-mcp-xmi` (thin `SKILL.md` with numbered rule
 - Name only MCP tools that are present in the live tool list (match the `cleanroom_*` suffix; names carry a server prefix).
 - Never change macro names in the question template; only the underlying column mapping in the clean room config changes.
 - Live trial against a sandbox clean room before a change counts as done. Do not simulate.
-- Per-clean-room cache and any client data stay gitignored.
+- Per-clean-room cache, spec, SQL and result rows stay gitignored (`.cleanroom-ops-cache/`). The one committed exception is `run-configs/`: non-date partition values only, validated by `scripts/check_run_configs.py`. Never store dates, results, run ids or credentials there.
 - Never ask users for an id (UUID, dataset id, org id) that a tool can supply. If a lookup can fail, give the skill an ordered fallback chain, cache the result in `.cleanroom-ops-cache/`, and ask only as the last step. Open improvement for the MCP owners: return the organization UUID from `meta_get_active_org_ids`.

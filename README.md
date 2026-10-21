@@ -34,7 +34,9 @@ Ask in plain language, for example "build a new exposure mapping question for <c
 
 ## Where things are saved
 
-Working files go in `.cleanroom-ops-cache/<clean-room-id>/` (the question spec and SQL, last run id, and result rows). This folder is gitignored. Do not commit it or client data.
+Working files go in `.cleanroom-ops-cache/<clean-room-id>/` (the question spec and SQL, last run id, and result rows). This folder is gitignored. Do not commit it or result data.
+
+Shared across the team (committed): `run-configs/<clean-room-id>/<question-id>.json` holds each question's non-date partition values (for example a source's app id or brand), so the next person to run the question gets them as defaults and only confirms them. Dates are never saved; the runner asks for them every run. After the runner updates a file, commit and push it, and `git pull` before running so you have the latest values. See `run-configs/README.md`.
 
 ## For people editing this repo
 
