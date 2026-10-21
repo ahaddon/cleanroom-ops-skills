@@ -24,9 +24,9 @@ Run a clean-room question and check its output the same way every time. Tools ar
    *Exit:* tools and `org_id` recorded.
 2. **Gather inputs.** Read `references/run-inputs.md`. If the question id is in `.cleanroom-ops-cache/<clean_room_id>/question_spec.json`, offer it as the default. Otherwise list questions with `cleanroom_get_all_questions` and let the user pick.
    *Exit:* every required field has a value.
-3. **Verify the question.** `cleanroom_get_question_by_id`: status must be `READY`, and every parameter the question defines must have a value. Date parameters (`START_DATE`, `END_DATE`) come from the question's Date Parameters toggle; ask for them as dates and pass them under the names the question reports. If the question reports none but the toggle is on, ask the user once and record the working names in `references/run-inputs.md`.
+3. **Verify the question.** `cleanroom_get_question_by_id`: status must be `READY`. If the question has date parameters (the Date Parameters toggle), `start_date` and `end_date` are required user inputs; they are submitted under exactly those names, as `YYYY-MM-DD`. One pair applies to every exposure source's date partition (the server fills each source's partition start/end from it), so never ask per source. Any other parameter the question reports also needs a value.
    *Exit:* READY and parameters complete.
-4. **Run gate.** Show question name, run name, parameters and organization. Ask exactly: "Run this question now? (yes / change something / stop)".
+4. **Run gate.** Show question name, run name, `start_date`, `end_date`, any other parameters, and organization. Ask exactly: "Run this question now? (yes / change something / stop)".
    *Exit:* yes.
 5. **Execute.** `cleanroom_create_question_run` with the run name and parameters. Save the run id to `.cleanroom-ops-cache/<clean_room_id>/last_run.json`.
 6. **Wait.** Poll `cleanroom_get_question_run_by_id` until the run reaches a terminal status, with increasing pauses between polls (start at 30 seconds, cap at 5 minutes). On a failed status, report `failureReason`, `runMessage`, `isRetryable` and stop.

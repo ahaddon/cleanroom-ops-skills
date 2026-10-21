@@ -11,7 +11,7 @@ Template: `cross-platform-exposure-mapping.sql`. Locked regions (never edited): 
 | 3 | `exposure_sources` | multi-select | yes (at least 1) | `digital_pixel`, `amazon`, `dtv`, `meta`, `uber` | `digital_pixel`, `amazon`, `meta`, `dtv` | Keep the CTE and its `UNION ALL` branch for each selected source; remove (not just comment) the rest. `uber` is a commented block in the template; uncomment it only when selected |
 | 4 | `digital_mapping` | single-select | yes if `digital_pixel` selected | `adserver` (default join) or `premapped_file` | `adserver` | `premapped_file` enables the commented `digital_mapping` and `digital_joined` CTEs and unions `digital_joined` instead of `snowplow` |
 | 5 | `vma_partition_filter` | boolean | yes | yes / no | no | yes = enable the `bfmt_partition` filter in `PivotedCuts` using `clean_room_id`. This is a comment toggle, not an edit to `PivotedCuts` logic |
-| 6 | `meta_date_range` | start/end date | yes if `meta` selected | `YYYY-MM-DD` | none | Not written into the SQL. The `@START_DATE`/`@END_DATE` macros stay as-is; the Date Parameters toggle is on (`hasDateParameters: true`) and the dates are supplied when the question is run |
+| 6 | (reserved) | - | no | Dates are NOT asked at build time. They are entered when the question is run (`cleanroom-question-runner` field 3) as `start_date` and `end_date`, one pair for all exposure sources | - | Nothing. The Date Parameters toggle is on when `meta` is selected |
 | 7 | `dataset_bindings` | table | yes, one row per `@macro` in the final SQL | `macro`, `dataset` (pick from the clean room's CONFIGURED datasets), `importDataType` (default `Generic`) | none | Not written into the SQL. Becomes `dataTypes` on create and the bindings on `configure_question_datasets`. Macros are listed from the final SQL by the builder, never typed by the user |
 
 ## VMA mapping dataset (field 7, the `@vma` macro)
@@ -53,11 +53,10 @@ Never use the clean room owner's UUID unless the owner is the active org (step 3
 
 ## Unconfirmed until the first live trial
 - Which `importDataType` each macro needs (`Generic` is the starting default).
-- How the date values must be passed when running the question (parameter names the run expects); check `cleanroom_get_question_by_id` after creation and record it here.
+- Confirmed from the run UI: run-time dates are submitted as `start_date` and `end_date` and the server derives each source's date partition from them (a run showed amazon, snowplow and uber partition start/end all equal to the entered dates).
 Record confirmed answers in `examples.md` after the trial.
 
 ## Validation rules
 - Field 3 must contain at least one source.
 - Field 4 only asked when `digital_pixel` is selected.
-- Field 6 only asked when `meta` is selected; end date must be on or after start date.
 - Field 1 must match a UUID pattern.

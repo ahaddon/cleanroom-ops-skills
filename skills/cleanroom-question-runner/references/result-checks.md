@@ -11,5 +11,5 @@ Generic (any question):
 Cross-platform exposure mapping question (the builder's template):
 5. **VMA mapping coverage.** Share of rows where `channel`, `publisher`, `property` or `creative` is null. Over 10% on any = warn (unmapped ids; check VMA coverage). Report by `exposure_source`.
 6. **Exposure totals.** `total_exposures` must be positive in every row; any zero or negative = fail.
-7. **Date range.** Report `min_exposure_date` and `max_exposure_date` per source. For Meta, they must fall inside the `START_DATE` / `END_DATE` used; outside = fail.
+7. **Date range.** Report `min_exposure_date` and `max_exposure_date` per source. Every source's dates must fall inside the `start_date` / `end_date` used for the run; outside = fail.
 8. **Source presence.** Every exposure source selected in `question_spec.json` appears in `exposure_source`; a missing source = fail. Label mapping: `digital_pixel` -> `digital_pixel`, `amazon` -> `amazon_direct`, `meta` -> `meta_direct`, `dtv` -> `dtv`, `uber` -> `uber_direct`.

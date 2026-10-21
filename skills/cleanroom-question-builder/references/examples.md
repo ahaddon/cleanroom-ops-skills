@@ -64,3 +64,7 @@ Meta selected. Expected create payload: `hasDateParameters: true`, `parameters: 
 Why: the toggle already creates `START_DATE` and `END_DATE`; declaring them as well leaves duplicates in the question's Parameters panel (confirmed by a screenshot of a question created that way).
 After creation, `cleanroom_get_question_by_id` must show each date parameter once.
 
+## Example 8: dates at run time
+
+Runner asks once for `start_date` = 2026-09-01 and `end_date` = 2026-09-30 and submits `{"start_date": "2026-09-01", "end_date": "2026-09-30"}`. The one pair applies to every exposure source's date partition. The runner does not ask about non-date partition values (such as an app id or brand); those are dataset settings.
+
