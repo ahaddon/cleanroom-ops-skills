@@ -12,7 +12,7 @@ A COMPLETED run loads automatically only when all of these hold (from the server
 - the question is not a List question,
 - the question's output format is REPORT.
 
-Check with `cleanroom_get_question_result_tables` (`cleanRoomId`, `cleanRoomQuestionId`): `status` must be `ready` and `loadStatus` `LOADED`. Confirmed: CRQ-234358 (Citibank) stayed `unavailable` / `NOT_LOADED` more than 90 minutes after its run completed, and querying `CRQ_234358` failed with "does not exist or not authorized". If that happens, stop and report it; do not retry the query. Cause: that question had `outputFormat` `CODE_OUTPUT` and no declared dimensions or measures. The builder now creates questions with `REPORT` and the declared output fields (`cleanroom-question-builder/references/question-inputs.md`). A question built before that change must be recreated; updating a definition deletes its dataset bindings. Whether a question built the new way loads after a run is not yet confirmed.
+Check with `cleanroom_get_question_result_tables` (`cleanRoomId`, `cleanRoomQuestionId`): `status` must be `ready` and `loadStatus` `LOADED`. Confirmed: CRQ-234358 (Citibank) stayed `unavailable` / `NOT_LOADED` more than 90 minutes after its run completed, and querying `CRQ_234358` failed with "does not exist or not authorized". If that happens, stop and report it; do not retry the query. Cause: that question had `outputFormat` `CODE_OUTPUT` and no declared dimensions or measures. The builder now creates questions with `REPORT` and the declared output fields (`cleanroom-question-builder/references/question-inputs.md`). A question built before that change must be recreated; updating a definition deletes its dataset bindings. Confirmed: CRQ-234564, built the new way, showed `status: ready` / `loadStatus: LOADED` as soon as its run completed (about 12 minutes after submit), and all 5,021 rows were queryable by `RUN_ID`.
 
 ## Steps
 
@@ -25,7 +25,7 @@ Check with `cleanroom_get_question_result_tables` (`cleanRoomId`, `cleanRoomQues
 
 ## Checks as queries (cross-platform exposure mapping; `T` = report table, `:run` = run id)
 
-Untested against live data until a loaded run is available; treat as templates.
+Confirmed on a live run (CRQ-234564): `COUNT_IF` per column for null counts, a `GROUP BY` over all columns for duplicates, and `GROUP BY exposure_source` for coverage, totals and date range all run in one `cleanroom_query_results` call each. Date columns come back as timestamps with a `-07:00` offset (display only; the calendar day is the date). Column names are upper case (`EXPOSURE_SOURCE`, `TOTAL_EXPOSURES`); results also carry `RUN_ID` and `IS_DELETED`.
 
 - Row count: `SELECT COUNT(*) FROM T WHERE RUN_ID = :run`
 - Null rate and 100%-null columns: use `cleanroom_get_results_table_profile`, or `SELECT COUNT(*) - COUNT(col) ... FROM T WHERE RUN_ID = :run` per column.
