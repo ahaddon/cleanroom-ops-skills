@@ -6,11 +6,11 @@ Template: `cross-platform-exposure-mapping.sql`. Locked regions (never edited): 
 
 | # | Field | Type | Required | Allowed values / format | Default | Effect on the SQL |
 |---|---|---|---|---|---|---|
-| 1 | `clean_room_id` | string | yes | UUID of the clean room the question will be loaded into | none | Goes in the commented VMA partition filter's clean-room-id line only if the partition filter is enabled (field 5) |
+| 1 | `clean_room_id` | string | yes | UUID of the clean room the question will be loaded into | none | Not written into the SQL. Identifies the clean room the question is created in |
 | 2 | `client_name` | string | yes | free text, used for the question name only | none | Question title: `<client_name> - Cross-Platform Exposure Mapping` |
 | 3 | `exposure_sources` | multi-select | yes (at least 1) | `digital_pixel`, `amazon`, `dtv`, `meta`, `uber` | `digital_pixel`, `amazon`, `meta`, `dtv` | Keep the CTE and its `UNION ALL` branch for each selected source; remove (not just comment) the rest. `uber` is a commented block in the template; uncomment it only when selected |
 | 4 | `digital_mapping` | single-select | yes if `digital_pixel` selected | `adserver` (default join) or `premapped_file` | `adserver` | `premapped_file` enables the commented `digital_mapping` and `digital_joined` CTEs and unions `digital_joined` instead of `snowplow` |
-| 5 | `vma_partition_filter` | boolean | yes | yes / no | no | yes = enable the `bfmt_partition` filter in `PivotedCuts` using `clean_room_id`. This is a comment toggle, not an edit to `PivotedCuts` logic |
+| 5 | (reserved) | - | no | Never asked. The VMA `bfmt_partition` is a run-time partition parameter (`vma.bfmt_partition`, always `141`), submitted by `cleanroom-question-runner` (see its `references/partition-parameters.md`). The commented partition filter inside `PivotedCuts` stays commented and is never enabled | - | Nothing |
 | 6 | (reserved) | - | no | Dates are NOT asked at build time. They are entered when the question is run (`cleanroom-question-runner` field 3) as `start_date` and `end_date`, one pair for all exposure sources | - | Nothing. The Date Parameters toggle is on when `meta` is selected |
 | 7 | `dataset_bindings` | table | yes, one row per `@macro` in the final SQL | `macro`, `dataset` (pick from the clean room's CONFIGURED datasets), `importDataType` (default `Generic`) | none | Not written into the SQL. Becomes `dataTypes` on create and the bindings on `configure_question_datasets`. Macros are listed from the final SQL by the builder, never typed by the user |
 
@@ -64,7 +64,7 @@ Never use the clean room owner's UUID unless the owner is the active org (step 3
 
 ## Pre-flight facts to confirm for the clean room (ask once, store in the cache)
 - Datasets for each selected source are already in the clean room with `configurationStatus = CONFIGURED` (read with `cleanroom_get_datasets`). If not, stop and route to `cleanroom-setup`.
-- VMA dataset (`@vma`, and `@vma_partition` if field 5 = yes) is present. See "VMA mapping dataset" above.
+- VMA dataset (`@vma`) is present. See "VMA mapping dataset" above.
 - The working organization (`meta_get_active_org_ids`); never switch mid-task without the user confirming.
 
 ## Unconfirmed until the first live trial

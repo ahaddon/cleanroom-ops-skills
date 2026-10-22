@@ -11,7 +11,6 @@ Spec:
   "client_name": "Acme",
   "exposure_sources": ["digital_pixel", "amazon", "meta"],
   "digital_mapping": "adserver",
-  "vma_partition_filter": false,
   "report_date_range": {"start": "2026-01-01", "end": "2026-03-31"}
 }
 ```

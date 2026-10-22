@@ -12,7 +12,7 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
 1. **Follow the pipeline in order. Never skip, reorder or merge steps.** Each step ends only when its exit condition is true.
 2. **Ask only the fields in `references/question-inputs.md`, in that order, worded as written there.** Never invent a field. Never skip a required one. A field gated on another (e.g. field 4, field 6) is asked only when its condition holds.
 3. **The template is the only source of SQL.** Start from the template file verbatim, then apply only the edits the input table allows. Never write SQL from memory.
-4. **Locked regions are never edited:** the `PivotedCuts` block, the Meta `@START_DATE`/`@END_DATE` filter, and every `@macro` name. Enabling or disabling the commented VMA partition filter (field 5) is a comment toggle, not an edit.
+4. **Locked regions are never edited:** the `PivotedCuts` block, the Meta `@START_DATE`/`@END_DATE` filter, and every `@macro` name. The commented VMA partition filter inside `PivotedCuts` stays commented; never ask about it or enable it (the partition is a run-time parameter).
 5. **Remove unselected source CTEs and their `UNION ALL` branches; keep selected ones unchanged.** Do not alter source CTE logic.
 6. **Validate before showing and before writing.** `scripts/validate_question.py` must print PASS. On FAIL, fix the SQL and re-run; never present SQL that has not passed.
 7. **No write without confirmation.** Creating or updating a question in a clean room requires the Review gate (step 5) to be answered "yes" for that exact SQL. A "yes" never carries over to a later change.
