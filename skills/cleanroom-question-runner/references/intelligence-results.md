@@ -12,7 +12,7 @@ A COMPLETED run loads automatically only when all of these hold (from the server
 - the question is not a List question,
 - the question's output format is REPORT.
 
-Check with `cleanroom_get_question_result_tables` (`cleanRoomId`, `cleanRoomQuestionId`): `status` must be `ready` and `loadStatus` `LOADED`. Confirmed: CRQ-234358 (Citibank) stayed `unavailable` / `NOT_LOADED` more than 90 minutes after its run completed, and querying `CRQ_234358` failed with "does not exist or not authorized". If that happens, stop and report it; do not retry the query. Likely cause to check with the question owner: the question's output format is not REPORT. Unconfirmed.
+Check with `cleanroom_get_question_result_tables` (`cleanRoomId`, `cleanRoomQuestionId`): `status` must be `ready` and `loadStatus` `LOADED`. Confirmed: CRQ-234358 (Citibank) stayed `unavailable` / `NOT_LOADED` more than 90 minutes after its run completed, and querying `CRQ_234358` failed with "does not exist or not authorized". If that happens, stop and report it; do not retry the query. Cause: that question had `outputFormat` `CODE_OUTPUT` and no declared dimensions or measures. The builder now creates questions with `REPORT` and the declared output fields (`cleanroom-question-builder/references/question-inputs.md`). A question built before that change must be recreated; updating a definition deletes its dataset bindings. Whether a question built the new way loads after a run is not yet confirmed.
 
 ## Steps
 

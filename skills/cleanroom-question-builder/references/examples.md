@@ -60,9 +60,14 @@ Keys come from `scripts/summarize_question.py`. With `uber` or `digital_mapping`
 
 ## Example 7: date parameters
 
-Meta selected. Expected create payload: `hasDateParameters: true`, `parameters: []`. Not expected: any `parameters` entry named `START_DATE` or `END_DATE`.
-Why: the toggle already creates `START_DATE` and `END_DATE`; declaring them as well leaves duplicates in the question's Parameters panel (confirmed by a screenshot of a question created that way).
-After creation, `cleanroom_get_question_by_id` must show each date parameter once.
+Meta selected. Expected create payload: `hasDateParameters: true`, `queryValidation: false`, `parameters: []`. Not expected: any `parameters` entry named `START_DATE` or `END_DATE`, `hasDateFilter`, or `queryValidation: true`.
+Why: with validation on, the server rejects the `@START_DATE` / `@END_DATE` macros before the toggle exists. With validation off and the toggle on, the question is created with the Date Parameters toggle on and each date parameter once (confirmed live in the clean room UI). Declaring them in `parameters` instead leaves duplicates in the Parameters panel.
+After creation, ask the user to confirm in the clean room UI that each date parameter appears once; the MCP read-back does not list them for this question.
+
+## Example 9: output format and output fields
+
+Expected create payload: `outputFormat: "REPORT"`, 17 `dimensions` (15 `STRING`, then `min_exposure_date` and `max_exposure_date` as `DATE`) and 1 `measures` entry (`total_exposures`, `LONG`). Not expected: `CODE_OUTPUT`, empty `dimensions` / `measures`, or the date columns as measures.
+Why: a `CODE_OUTPUT` question with no declared output fields never loaded into Clean Room Intelligence (`NOT_LOADED`), and a run on it returned a row count but no columns. After creation, `cleanroom_get_question_by_id` must list all 17 dimensions and the metric.
 
 ## Example 8: dates at run time
 

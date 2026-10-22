@@ -23,7 +23,23 @@ The VMA mapping dataset's name always starts with `PROD Value Mapping`. When lis
 - A match must still have `configurationStatus = CONFIGURED`. A prefix match that is not CONFIGURED is shown with its status and cannot be selected.
 - Never hardcode a dataset id or the full dataset name; only the prefix is fixed.
 
-Fixed values, never asked: category `Analytics`, outputFormat `CODE_OUTPUT`, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` true, `hasDateParameters` true when `meta` is selected.
+Fixed values, never asked: category `Analytics`, outputFormat **`REPORT`**, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` **false**, `hasDateParameters` true when `meta` is selected, plus the dimensions and measures below.
+
+- **outputFormat `REPORT` is required for results to load into Clean Room Intelligence.** `CODE_OUTPUT` questions never load (CRQ-234358 stayed `NOT_LOADED`).
+- **`queryValidation` false is required when `@START_DATE` / `@END_DATE` are in the SQL.** With it true, the server's pre-save check rejects the question ("Query has the following dataset type which are not part of the question: END_DATE,START_DATE"), and neither `hasDateParameters` nor `hasDateFilter` avoids that. Confirmed live. Local validation (`scripts/validate_question.py`, both runs) is the guard instead, so it must pass before the Review gate.
+- **Do not send `hasDateFilter`**; it made no difference.
+
+## Output fields (dimensions and measures): always declared
+
+The server builds the report table from the declared output fields, so a question with none has nothing to load. The UI's Extract Output Fields button fills them; through the MCP, send them explicitly in `cleanroom_create_question` as `dimensions` and `measures` (`name`, `type`). The template's final `SELECT` is the same for every source selection, so the list is fixed:
+
+| Kind | Name | Type |
+|---|---|---|
+| dimension | `exposure_source`, `creative_source_id`, `property_source_id`, `publisher_id`, `campaign_id`, `creative_name`, `placement_name`, `campaign_name`, `audience_name`, `channel`, `property`, `publisher`, `media_type`, `campaign`, `creative` | `STRING` |
+| dimension | `min_exposure_date`, `max_exposure_date` | `DATE` |
+| measure | `total_exposures` | `LONG` |
+
+Rules: date columns are always dimensions, never measures; measures are numeric only; names are the output column aliases exactly as written in the final `SELECT` (lower case). If the final `SELECT` ever changes, update this table in the same commit. Confirmed live: the question was created with this list, the UI's Extract Output Fields matched it, and `cleanroom_configure_question_datasets` (no `fields`, `darForce` false) bound all 9 plain macros and moved the status from `MISSING_DATASETS` to `READY`.
 
 **Date parameters: only set the toggle (`hasDateParameters: true`). Never add `START_DATE` or `END_DATE` to the `parameters` array.** The server creates `START_DATE` and `END_DATE` itself when the toggle is on; declaring them again produces duplicate parameters in the question editor. Send `parameters` as an empty array (the default) for the exposure mapping template.
 
