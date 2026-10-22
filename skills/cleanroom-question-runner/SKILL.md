@@ -33,7 +33,7 @@ Run a clean-room question and check its output the same way every time. Tools ar
 5. **Execute.** Build the `parameters` map from `references/partition-parameters.md`: `START_DATE` / `END_DATE`, every bound source's date `_start` / `_end` keys, the step 3.5 values, and `vma.bfmt_partition`. Call `cleanroom_create_question_run` with the run name and that map. Save the run id to `.cleanroom-ops-cache/<clean_room_id>/last_run.json`, then read the run back with `cleanroom_get_question_run_by_id` and confirm every submitted key appears in `parameters`; a missing key means it was not applied, so stop and report it. A format error is rejected before any run is created.
 6. **Wait.** Poll `cleanroom_get_question_run_by_id` until the run reaches a terminal status, with increasing pauses between polls (start at 30 seconds, cap at 5 minutes). On a failed status, report `failureReason`, `runMessage`, `isRetryable` and stop.
    *Exit:* run completed successfully, or failure reported.
-7. **Pull results.** `cleanroom_get_question_run_data`, following `nextCursor` until `hasMore` is false. Write rows to `.cleanroom-ops-cache/<clean_room_id>/run_<run id>.json` (gitignored).
+7. **Pull results.** `cleanroom_get_question_run_data`, following `nextCursor` until `hasMore` is false. Write rows to `.cleanroom-ops-cache/<clean_room_id>/run_<run id>.json` (gitignored). If the response has only `count` / `nextCursor` and no rows (seen on CRQ-234358), do not page through it; use `references/intelligence-results.md` and run step 8 as queries instead.
 8. **Check results.** Apply every check in `references/result-checks.md`.
 9. **Finalize (hard gate).** Confirm each item, then print the report:
    - [ ] question was READY
@@ -47,5 +47,6 @@ Run a clean-room question and check its output the same way every time. Tools ar
 ## References
 - `references/run-inputs.md` - fields asked in step 2.
 - `references/partition-parameters.md` - exact parameter keys and value formats submitted in step 5.
+- `references/intelligence-results.md` - pull and check results through `cleanroom-intelligence-mcp` when the row pull in step 7 returns no rows; includes the load prerequisite.
 - `references/result-checks.md` - the fixed check list for step 8.
 - The `cleanroom-qa` skill, if installed, can do a deeper null-rate, duplicate, schema-drift and volume-drift pass on the same run; offer it as the next step but do not replace these checks with it.
