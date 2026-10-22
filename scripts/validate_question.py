@@ -19,6 +19,8 @@ DEFAULT_TEMPLATE = (
 )
 
 PIVOTED_RE = re.compile(r"PivotedCuts AS \(.*?GROUP BY map_id\s*\)", re.S)
+# Field 5 toggle: the bfmt_partition WHERE clause is the only part of PivotedCuts that may change.
+PARTITION_RE = re.compile(r"WHERE @vma\.bfmt_partition = \(SELECT .*?\)\s*(?=GROUP BY map_id)", re.S)
 META_FILTER = (
     "WHERE TO_DATE(TIMESTAMP_SECONDS(INT(@meta.ts))) "
     "BETWEEN '@START_DATE' AND '@END_DATE'"
@@ -64,9 +66,10 @@ def main() -> int:
 
     # 1. Locked: PivotedCuts must be verbatim.
     m = PIVOTED_RE.search(tpl)
+    g = PIVOTED_RE.search(gen)
     if not m:
         errors.append("template is missing the PivotedCuts block (template problem)")
-    elif norm(m.group(0)) not in gen:
+    elif not g or norm(m.group(0)) != norm(PARTITION_RE.sub(" ", g.group(0))):
         errors.append("LOCKED: PivotedCuts block was modified or removed")
 
     # 2. Locked: Meta date filter, when Meta is used.
