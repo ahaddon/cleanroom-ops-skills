@@ -136,4 +136,16 @@ for sk in skills/*/SKILL.md; do
   grep -q 'scripts/check_latest.sh' "$sk" || { echo "$sk is missing the freshness gate (step 0)"; exit 1; }
 done
 
+# 13. SessionStart hook: settings are valid JSON, point at a real script, and the wrapper always exits 0 with a message.
+python3 - <<'PY' || { echo ".claude/settings.json hook is missing or invalid"; exit 1; }
+import json, os
+d = json.load(open(".claude/settings.json"))
+cmd = d["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+assert "scripts/session_start_check.sh" in cmd, cmd
+assert os.path.exists("scripts/session_start_check.sh")
+PY
+rc=0; out=$(bash scripts/session_start_check.sh 2>&1) || rc=$?
+[ "$rc" -eq 0 ] || { echo "session_start_check.sh must always exit 0"; exit 1; }
+echo "$out" | grep -q 'cleanroom-ops freshness' || { echo "session_start_check.sh printed no freshness message"; exit 1; }
+
 echo PASS
