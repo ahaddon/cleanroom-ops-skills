@@ -19,9 +19,11 @@ Create a clean room and get it ready for questions. Tools are the `cleanroom_*` 
 8. **Stay in one organization.** Never switch `org_id` mid-task without the user confirming.
 9. **Stop on error.** Report the error and the state reached so far (what exists, what does not). Never roll back or retry a write automatically.
 10. **Name only tools present in the live tool list.** If one is missing, stop with: "A required tool isn't available on this server: <tool>."
+11. **Freshness first.** Step 0 must print `FRESH` before anything else. On `STALE` or `UNVERIFIED`, stop and show the script's message verbatim; never continue, and never offer to skip the check.
 
 ## Pipeline
 
+0. **Freshness gate.** Run `bash scripts/check_latest.sh` from the repo root. *Exit:* it prints `FRESH`. On `STALE` or `UNVERIFIED` (non-zero exit), stop and show its message verbatim; do not continue, retry in a loop, or offer a way around it. The user fixes the checkout (usually `git pull --ff-only origin main`) and starts again.
 1. **Check tools and organization.** Confirm `cleanroom_create`, `cleanroom_add_partner`, `cleanroom_add_user`, `cleanroom_get_roles`, `cleanroom_get_all_data_connections`, `cleanroom_configure_dataset`, `cleanroom_update_dataset_by_id`, `cleanroom_get_datasets` and `cleanroom_list_partner_invitations_for_inviter` are available. Call `meta_get_active_org_ids` (one org: use it and say which; several: ask).
    *Exit:* tools and `org_id` recorded.
 2. **Gather inputs.** Read `references/setup-inputs.md`. Ask every applicable field in one message. Read `cleanroom_get_roles` and `cleanroom_get_all_data_connections` first so role and data-connection choices are real options, not free text.

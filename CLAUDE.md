@@ -22,6 +22,7 @@ Modeled on `coreydevin/intelligence-mcp-xmi` (thin `SKILL.md` with numbered rule
 - Review gate with fixed wording before every write.
 - State passed between skills as files in `.cleanroom-ops-cache/<clean_room_id>/`.
 - `scripts/test_validate.sh` must print PASS after any change to the template or validator.
+- Every skill starts with step 0, `bash scripts/check_latest.sh`: the checkout must contain the latest `origin/main` and have no local edits to skills or scripts (edits under `run-configs/` are allowed). A new skill copies this step. Maintainers who are editing the skills set `CLEANROOM_OPS_DEV=1` to skip only the local-edit check; never document that override in a skill or its user-facing message.
 
 ## Rules
 

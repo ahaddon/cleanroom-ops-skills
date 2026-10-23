@@ -17,9 +17,11 @@ Run a clean-room question and check its output the same way every time. Tools ar
 6. **Never retry a failed run automatically.** Report `failureReason` and `isRetryable`; a retry is a new Run gate.
 7. **Run the checks in `references/result-checks.md`, all of them, and report every result.** Do not drop a check because it passed or because the data looks fine.
 8. **Name only tools present in the live tool list.** If one is missing, stop with: "A required tool isn't available on this server: <tool>."
+9. **Freshness first.** Step 0 must print `FRESH` before anything else. On `STALE` or `UNVERIFIED`, stop and show the script's message verbatim; never continue, and never offer to skip the check.
 
 ## Pipeline
 
+0. **Freshness gate.** Run `bash scripts/check_latest.sh` from the repo root. *Exit:* it prints `FRESH`. On `STALE` or `UNVERIFIED` (non-zero exit), stop and show its message verbatim; do not continue, retry in a loop, or offer a way around it. The user fixes the checkout (usually `git pull --ff-only origin main`) and starts again.
 1. **Check tools and organization.** Confirm `cleanroom_get_all_questions`, `cleanroom_get_question_by_id`, `cleanroom_create_question_run`, `cleanroom_get_question_run_by_id` and `cleanroom_get_question_run_data` are available. Call `meta_get_active_org_ids` (one org: use it and say which; several: ask).
    *Exit:* tools and `org_id` recorded.
 2. **Gather inputs.** Read `references/run-inputs.md`. If the question id is in `.cleanroom-ops-cache/<clean_room_id>/question_spec.json`, offer it as the default. Otherwise list questions with `cleanroom_get_all_questions` and let the user pick.

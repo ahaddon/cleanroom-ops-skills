@@ -100,4 +100,40 @@ grep -q 'FROM tiktok' "$tmp/k.sql" || { echo "tiktok union branch missing"; exit
 echo '{"name":"TikTok","creative_id":"a","campaign_id":"c","date_column":"d","date_kind":"date"}' > "$tmp/tk.json"
 python3 scripts/add_exposure_source.py "$tpl" "$tmp/t8.sql" "$tmp/tk.json" >/dev/null && { echo "expected FAIL: tiktok is a built-in source"; exit 1; }
 
+# 11. Freshness gate (scripts/check_latest.sh), against throwaway repos.
+fr="$tmp/fresh"; mkdir -p "$fr"
+git -C "$fr" init -q -b main origin_repo 2>/dev/null || { git init -q -b main "$fr/origin_repo"; }
+o="$fr/origin_repo"
+git -C "$o" config user.email t@t; git -C "$o" config user.name t
+mkdir -p "$o/skills" "$o/scripts" "$o/run-configs"; echo a > "$o/skills/a.md"; echo r > "$o/run-configs/r.json"
+git -C "$o" add -A; git -C "$o" commit -qm one
+git clone -q "$o" "$fr/user"; u="$fr/user"
+git -C "$u" config user.email t@t; git -C "$u" config user.name t
+chk() { bash scripts/check_latest.sh "$u" 2>&1; }
+chk | grep -q '^FRESH' || { echo "fresh clone should pass the freshness gate"; exit 1; }
+echo local > "$u/run-configs/r.json"
+chk | grep -q '^FRESH' || { echo "run-configs edits must not block"; exit 1; }
+git -C "$u" checkout -q -- run-configs
+echo edit >> "$u/skills/a.md"
+bash scripts/check_latest.sh "$u" >/dev/null 2>&1 && { echo "edited skill should be STALE"; exit 1; }
+CLEANROOM_OPS_DEV=1 bash scripts/check_latest.sh "$u" >/dev/null 2>&1 || { echo "dev override should skip the local-edit check"; exit 1; }
+git -C "$u" checkout -q -- skills
+echo two >> "$o/skills/a.md"; git -C "$o" commit -qam two
+out=$(bash scripts/check_latest.sh "$u" 2>&1 || true); echo "$out" | grep -q '^STALE: .*behind' || { echo "behind clone should be STALE"; exit 1; }
+CLEANROOM_OPS_DEV=1 bash scripts/check_latest.sh "$u" >/dev/null 2>&1 && { echo "dev override must not skip the behind check"; exit 1; }
+echo mine >> "$u/skills/b.md"; git -C "$u" add -A; git -C "$u" commit -qm mine
+out=$(bash scripts/check_latest.sh "$u" 2>&1 || true); echo "$out" | grep -q '^STALE: .*diverged' || { echo "diverged clone should be STALE"; exit 1; }
+git -C "$u" reset -q --hard origin/main; git -C "$u" pull -q --ff-only origin main
+chk | grep -q '^FRESH' || { echo "updated clone should pass"; exit 1; }
+echo extra > "$u/skills/c.md"; git -C "$u" add -A; git -C "$u" commit -qm ahead
+chk | grep -q '^FRESH' || { echo "a clone ahead of main should pass"; exit 1; }
+mv "$o" "$o.gone"
+rc=0; bash scripts/check_latest.sh "$u" >/dev/null 2>&1 || rc=$?; [ "$rc" -eq 2 ] || { echo "unreachable origin should be UNVERIFIED (exit 2)"; exit 1; }
+rc=0; bash scripts/check_latest.sh "$fr" >/dev/null 2>&1 || rc=$?; [ "$rc" -eq 2 ] || { echo "non-git dir should be UNVERIFIED (exit 2)"; exit 1; }
+
+# 12. Every skill opens with the freshness gate.
+for sk in skills/*/SKILL.md; do
+  grep -q 'scripts/check_latest.sh' "$sk" || { echo "$sk is missing the freshness gate (step 0)"; exit 1; }
+done
+
 echo PASS

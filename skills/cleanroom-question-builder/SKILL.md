@@ -20,9 +20,11 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
 9. **VMA dataset candidates always include datasets whose name starts with `PROD Value Mapping`**, listed first, per `references/question-inputs.md` -> "VMA mapping dataset". Never hardcode a dataset id.
 10. **Never ask the user for an id a tool can supply.** The one id that needs a lookup is `organizationID`; resolve it with the ordered steps in `references/question-inputs.md` -> "Organization UUID", and ask only as the last step, once.
 11. **Plain output.** Show the user the inputs, the SQL, and results of the checks. Do not narrate internals or offer extras.
+12. **Freshness first.** Step 0 must print `FRESH` before anything else. On `STALE` or `UNVERIFIED`, stop and show the script's message verbatim; never continue, and never offer to skip the check.
 
 ## Pipeline
 
+0. **Freshness gate.** Run `bash scripts/check_latest.sh` from the repo root. *Exit:* it prints `FRESH`. On `STALE` or `UNVERIFIED` (non-zero exit), stop and show its message verbatim; do not continue, retry in a loop, or offer a way around it. The user fixes the checkout (usually `git pull --ff-only origin main`) and starts again.
 1. **Check tools and organization.** Confirm `cleanroom_create_question`, `cleanroom_configure_question_datasets`, `cleanroom_get_question_by_id` and `cleanroom_get_datasets` are in the live tool list. Call `meta_get_active_org_ids`: one org means use it and say which; more than one means ask which before any other call. Then resolve `organizationID` (UUID) per `references/question-inputs.md`; do it now so a missing UUID never interrupts step 6. If unavailable, continue steps 2-5 and finish with the fixed fallback in step 6.
    *Exit:* tool availability, `org_id` and `organizationID` recorded.
 2. **Gather inputs.** Read `references/question-inputs.md`. Ask every applicable field in ONE message (use multiple-choice prompts for enumerable fields). Load any saved answers from `.cleanroom-ops-cache/<clean_room_id>/question_spec.json` as defaults, and say they are defaults.
