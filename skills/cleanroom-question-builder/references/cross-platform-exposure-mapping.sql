@@ -176,8 +176,8 @@ meta AS (
 --         @tiktok.adgroup_name AS placement_name,
 --         @tiktok.campaign_name AS campaign_name,
 --         COUNT(*) AS exposures,
---         MIN(@tiktok.exposure_date) AS min_date,
---         MAX(@tiktok.exposure_date) AS max_date
+--         MIN(@tiktok.new_date) AS min_date,
+--         MAX(@tiktok.new_date) AS max_date
 --     FROM @tiktok
 --     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 -- ),

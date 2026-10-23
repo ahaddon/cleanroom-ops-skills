@@ -22,12 +22,12 @@ Upper case. The run read-back shows `START_DATE` / `END_DATE`.
 | `snowplow_exposures` (digital pixel) | `snowplow_exposures._lr_event_date_utc_start` | `YYYY-MM-DD` | dates: every run |
 | | `snowplow_exposures._lr_event_date_utc_end` | `YYYY-MM-DD` | dates: every run |
 | | `snowplow_exposures.app_id` | client's app id | saved in `run-configs/` |
-| `uber` | `uber.event_date_start` | `YYYY-MM-DD` | dates: every run |
+| `uber` (only if the bound dataset has these partitions; KDP's `Xmi_campaign_exposure` has none, so send no `uber.*` keys) | `uber.event_date_start` | `YYYY-MM-DD` | dates: every run |
 | | `uber.event_date_end` | `YYYY-MM-DD` | dates: every run |
 | | `uber.brand` | brands joined by a bare comma, no space: `A,B,C` | saved in `run-configs/` |
-| `tiktok` | `tiktok.exposure_date_start` | `YYYY-MM-DD` | dates: every run (unconfirmed) |
-| | `tiktok.exposure_date_end` | `YYYY-MM-DD` | dates: every run (unconfirmed) |
-| | `tiktok.brand` | brands joined by a bare comma, no space: `A,B,C` | saved in `run-configs/` (unconfirmed) |
+| `tiktok` | `tiktok.new_date_start` | `YYYY-MM-DD` | dates: every run (the date partition is `new_date`, not `exposure_date`; `exposure_date` keys are silently dropped) |
+| | `tiktok.new_date_end` | `YYYY-MM-DD` | dates: every run |
+| | `tiktok.brand` | brands joined by a bare comma, no space: `A,B,C` | saved in `run-configs/` (kept by the server on the KDP run) |
 | `vma` | `vma.bfmt_partition` | the user's whole number, as a string (for example `"141"`) | asked at every run (`vma_bfmt_partition` in `run-inputs.md`), never saved or defaulted; needed whenever the `vma` dataset is bound |
 | a custom source (`question_spec.json` -> `custom_sources`) with `date_filter: partition` | `<macro>.<date_column>_start` / `_end` | `YYYY-MM-DD` for DATE, `YYYY-MM-DD 00:00:00` / `23:59:59` for TIMESTAMP (unconfirmed) | dates: every run; any non-date partition field is asked once and saved in `run-configs/` |
 | a custom source with `date_filter: sql` | none | filtered in the SQL by `@START_DATE` / `@END_DATE` | the question's Date Parameters toggle supplies them |
@@ -57,4 +57,5 @@ Amazon timestamps must be `YYYY-MM-DD HH:MM:SS`. The UI's display format `2026-0
 - Ask for one `start_date` / `end_date` pair; fan it out to every `_start` / `_end` key above (Amazon with the time suffixes).
 - Non-date values (`app_id`, `brand`) come from `run-configs/`; `vma.bfmt_partition` is asked from the user at every run.
 - After the run is created, read it back with `cleanroom_get_question_run_by_id` and confirm every key submitted appears in `parameters`. A missing key means it was not applied.
+- Partition fields are per dataset. Read the run back: a submitted key that is missing from `parameters` is not a partition of that dataset, so drop it from future runs of that question.
 - Confirm a new source's keys by running once and reading the run's Partition Parameters in the UI, then add them here.

@@ -1,0 +1,11 @@
+{
+  "clean_room_id": "e51b9877-4a9e-4a4f-b943-0c4184073b17",
+  "clean_room_name": "KDP x /L Measurement Solutions Clean Room",
+  "question_id": "5d497722-743f-40f5-bb51-cd33b3618901",
+  "question_title": "KDP - Cross-Platform Exposure Mapping",
+  "partitions": {
+    "snowplow_exposures.app_id": "keurig-dr-pepper-53299443-30d4-4521-98c9-3582aaed7fea",
+    "tiktok.brand": "KDP"
+  },
+  "updated_at": "2026-10-23"
+}
