@@ -8,11 +8,15 @@ Template: `cross-platform-exposure-mapping.sql`. Locked regions (never edited): 
 |---|---|---|---|---|---|---|
 | 1 | `clean_room_id` | string | yes | UUID of the clean room the question will be loaded into | none | Not written into the SQL. Identifies the clean room the question is created in |
 | 2 | `client_name` | string | yes | free text, used for the question name only | none | Question title: `<client_name> - Cross-Platform Exposure Mapping` |
-| 3 | `exposure_sources` | multi-select | yes (at least 1) | `digital_pixel`, `amazon`, `dtv`, `meta`, `uber` | `digital_pixel`, `amazon`, `meta`, `dtv` | Keep the CTE and its `UNION ALL` branch for each selected source; remove (not just comment) the rest. `uber` is a commented block in the template; uncomment it only when selected |
+| 3 | `exposure_sources` | multi-select | yes (at least 1) | `digital_pixel`, `amazon`, `dtv`, `meta`, `uber`, `tiktok`, `other` (a platform not listed; asked for in field 8) | `digital_pixel`, `amazon`, `meta`, `dtv` | Keep the CTE and its `UNION ALL` branch for each selected source; remove (not just comment) the rest. `uber` and `tiktok` are commented blocks in the template; uncomment each (CTE and union branch) only when selected |
 | 4 | `digital_mapping` | single-select | yes if `digital_pixel` selected | `adserver` (default join) or `premapped_file` | `adserver` | `premapped_file` enables the commented `digital_mapping` and `digital_joined` CTEs and unions `digital_joined` instead of `snowplow` |
-| 5 | (reserved) | - | no | Never asked. The VMA `bfmt_partition` is a run-time partition parameter (`vma.bfmt_partition`, always `141`), submitted by `cleanroom-question-runner` (see its `references/partition-parameters.md`). The commented partition filter inside `PivotedCuts` stays commented and is never enabled | - | Nothing |
+| 5 | `adserver_data` | boolean | yes if `digital_pixel` selected | yes / no. Prompt text, exactly: "Are you currently using ad server data (an ad server data connection) for your digital pixel exposures?" | yes | no = remove the ad server joins from the `snowplow` CTE with `python3 scripts/remove_adserver.py <question.sql> <question.sql>` (never by hand): both `LEFT JOIN @adserver` clauses go and `creative_name`, `placement_name` and `campaign_name` become `CAST(NULL AS STRING)`. The `@adserver` macro is then absent, so field 7 never asks for an ad server dataset. A "no" overrides field 4's `adserver` choice. yes = no change |
 | 6 | (reserved) | - | no | Dates are NOT asked at build time. They are entered when the question is run (`cleanroom-question-runner` field 3) as `start_date` and `end_date`, one pair for all exposure sources | - | Nothing. The Date Parameters toggle is on when `meta` is selected |
 | 7 | `dataset_bindings` | table | yes, one row per `@macro` in the final SQL | `macro`, `dataset` (pick from the clean room's CONFIGURED datasets), `importDataType` (default `Generic`) | none | Not written into the SQL. Becomes `dataTypes` on create and the bindings on `configure_question_datasets`. Macros are listed from the final SQL by the builder, never typed by the user |
+| 8 | `custom_sources` | table | yes if field 3 includes `other` | one row per platform: `name` (free text, for example "Snapchat") and `dataset` (a CONFIGURED dataset). Prompt text, exactly: "Which exposure source is it, and which dataset holds its exposures?" The column mapping is proposed from the dataset's fields and confirmed at the Review gate | none | Each row is added with `python3 scripts/add_exposure_source.py` from the generic template, never by hand. Rules, mapping table and date handling: `references/new-exposure-source.md` |
+
+
+The VMA `bfmt_partition` is not a build-time input: it is a run-time partition parameter (`vma.bfmt_partition`) that `cleanroom-question-runner` asks for at every run (see its `references/partition-parameters.md`). The commented partition filter inside `PivotedCuts` stays commented and is never enabled.
 
 ## VMA mapping dataset (field 7, the `@vma` macro)
 
@@ -23,7 +27,7 @@ The VMA mapping dataset's name always starts with `PROD Value Mapping`. When lis
 - A match must still have `configurationStatus = CONFIGURED`. A prefix match that is not CONFIGURED is shown with its status and cannot be selected.
 - Never hardcode a dataset id or the full dataset name; only the prefix is fixed.
 
-Fixed values, never asked: category `Analytics`, outputFormat **`REPORT`**, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` **false**, `hasDateParameters` true when `meta` is selected, plus the dimensions and measures below.
+Fixed values, never asked: category `Analytics`, outputFormat **`REPORT`**, queryLanguage `SQL`, cleanRoomType `Hybrid`, `queryValidation` **false**, `hasDateParameters` true when `meta` is selected or any custom source uses the `sql` date filter, plus the dimensions and measures below.
 
 - **outputFormat `REPORT` is required for results to load into Clean Room Intelligence.** `CODE_OUTPUT` questions never load (CRQ-234358 stayed `NOT_LOADED`).
 - **`queryValidation` false is required when `@START_DATE` / `@END_DATE` are in the SQL.** With it true, the server's pre-save check rejects the question ("Query has the following dataset type which are not part of the question: END_DATE,START_DATE"), and neither `hasDateParameters` nor `hasDateFilter` avoids that. Confirmed live. Local validation (`scripts/validate_question.py`, both runs) is the guard instead, so it must pass before the Review gate.
@@ -49,7 +53,8 @@ Active SQL that uses `@table.@column` (the template's `digital_mapping` and `ube
 
 - Propose the mapping from the dataset's own field names (`cleanroom_get_dataset_by_id`), show it at the Review gate, and let the user correct it. Never apply a guessed mapping without showing it.
 - Template macros per source: `digital_mapping` -> `creative_source_id`, `creative_name`, `placement_name`, `campaign_name`; `uber` -> `creative_source_id`, `property_source_id`.
-- Plain table macros like `@snowplow_exposures` or `@amazon` (with ordinary columns after the dot) need no fields.
+- Plain table macros like `@snowplow_exposures`, `@amazon` or `@tiktok` (with ordinary columns after the dot) need no fields.
+- `tiktok` uses plain column names (`ad_id`, `adgroup_id`, `adgroup_name`, `ad_name`, `campaign_id`, `campaign_name`, `exposure_date`), written for the KDP `tiktok_habu_lcr-tiktok_kdp_xmi_exposures_v1` dataset. They are dataset-specific: the non-v1 TikTok dataset names the ad group id `ad_group_id`, so binding it needs the column name changed and the validator re-run. Compare the bound dataset's fields (`cleanroom_get_dataset_by_id`) with the CTE before the Review gate.
 - Not yet confirmed: how the server wants these declared. A first attempt that declared them as `dataSetTypeFields` was rejected with "fields which are not defined in the question: digital_mapping -> ..., uber -> ...". That attempt also sent SQL with comments, so retest with the comment-free submit copy first. Record the working shape here after a live trial.
 
 ## Organization UUID (`organizationID` on create): never ask for it first

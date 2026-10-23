@@ -1,6 +1,6 @@
 ---
 name: cleanroom-question-builder
-description: Use when the user wants to create a new clean-room question from the cross-platform exposure mapping template (unions exposure data from digital pixel, Amazon, Meta, DTV and Uber, then maps creative and property ids to LiveRamp VMA cuts). Collects a fixed set of inputs, generates SQL from the template without touching locked regions, validates it, and creates the question in the clean room only after explicit confirmation.
+description: Use when the user wants to create a new clean-room question from the cross-platform exposure mapping template (unions exposure data from digital pixel, Amazon, Meta, DTV, Uber and TikTok, then maps creative and property ids to LiveRamp VMA cuts). Collects a fixed set of inputs, generates SQL from the template without touching locked regions, validates it, and creates the question in the clean room only after explicit confirmation.
 ---
 
 # Clean-Room Question Builder
@@ -13,7 +13,7 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
 2. **Ask only the fields in `references/question-inputs.md`, in that order, worded as written there.** Never invent a field. Never skip a required one. A field gated on another (e.g. field 4, field 6) is asked only when its condition holds.
 3. **The template is the only source of SQL.** Start from the template file verbatim, then apply only the edits the input table allows. Never write SQL from memory.
 4. **Locked regions are never edited:** the `PivotedCuts` block, the Meta `@START_DATE`/`@END_DATE` filter, and every `@macro` name. The commented VMA partition filter inside `PivotedCuts` stays commented; never ask about it or enable it (the partition is a run-time parameter).
-5. **Remove unselected source CTEs and their `UNION ALL` branches; keep selected ones unchanged.** Do not alter source CTE logic.
+5. **Remove unselected source CTEs and their `UNION ALL` branches; keep selected ones unchanged.** Do not alter source CTE logic, except the one edit the input table allows: when field 5 (`adserver_data`) is no, run `scripts/remove_adserver.py` (never edit the joins by hand). A source the user has that is not a built-in is added only with `scripts/add_exposure_source.py` from `references/exposure-source-template.sql`, following `references/new-exposure-source.md`; never write its SQL by hand.
 6. **Validate before showing and before writing.** `scripts/validate_question.py` must print PASS. On FAIL, fix the SQL and re-run; never present SQL that has not passed.
 7. **No write without confirmation.** Creating or updating a question in a clean room requires the Review gate (step 5) to be answered "yes" for that exact SQL. A "yes" never carries over to a later change.
 8. **Name only tools present in the live tool list** (match the `cleanroom_*` suffix; real names carry a server prefix). If the tool needed in step 6 is absent, stop with the fixed message in step 6; do not improvise another path.
@@ -29,7 +29,7 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
    *Exit:* every required, applicable field has a value that passes the validation rules.
 3. **Write the spec.** Save the answers to `.cleanroom-ops-cache/<clean_room_id>/question_spec.json`.
    *Exit:* file exists and matches the fields in `question-inputs.md`.
-4. **Generate and validate SQL.** Copy the template to `.cleanroom-ops-cache/<clean_room_id>/question.sql`, apply the edits from the input table (rule 5), then run:
+4. **Generate and validate SQL.** Copy the template to `.cleanroom-ops-cache/<clean_room_id>/question.sql`, apply the edits from the input table (rule 5; if `adserver_data` is no, run `python3 scripts/remove_adserver.py <question.sql> <question.sql>` after the source edits; for each custom source, run `python3 scripts/add_exposure_source.py <question.sql> <question.sql> <spec.json>` as in `references/new-exposure-source.md`), then run:
    ```bash
    python3 scripts/validate_question.py .cleanroom-ops-cache/<clean_room_id>/question.sql
    ```
@@ -67,6 +67,7 @@ Turn a fixed set of user inputs into a clean-room question built from `reference
    Completion report sections, always in this order: Inputs, Question id and status or file path, Validator result, Setup summary table, Next step.
 
 ## References
+- `references/new-exposure-source.md` - adding a source that is not built in (generic template, mapping, date handling).
 - `references/question-inputs.md` - field schema (read in step 2).
 - `references/cross-platform-exposure-mapping.sql` - the template (read in step 4).
 - `references/examples.md` - worked input -> output examples.

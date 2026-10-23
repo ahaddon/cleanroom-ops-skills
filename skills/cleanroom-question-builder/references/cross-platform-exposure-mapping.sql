@@ -1,7 +1,7 @@
 /* ============================================================================
    CROSS-PLATFORM EXPOSURE MAPPING TEMPLATE
    ============================================================================
-   Unions exposure data from Snowplow/digital pixel, Amazon, Meta, and Uber,
+   Unions exposure data from Snowplow/digital pixel, Amazon, Meta, Uber, and TikTok,
    then maps creative + property identifiers to LiveRamp VMA cuts.
 
    IMPLEMENTATION NOTES FOR NEW CLIENTS
@@ -165,6 +165,23 @@ meta AS (
 --     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 -- ),
 
+-- tiktok AS (
+--     SELECT
+--         'tiktok_direct' AS exposure_source,
+--         @tiktok.ad_id AS creative_source_id,
+--         @tiktok.adgroup_id AS property_source_id,
+--         'tiktok' AS publisher_id,
+--         @tiktok.campaign_id AS campaign_id,
+--         @tiktok.ad_name AS creative_name,
+--         @tiktok.adgroup_name AS placement_name,
+--         @tiktok.campaign_name AS campaign_name,
+--         COUNT(*) AS exposures,
+--         MIN(@tiktok.exposure_date) AS min_date,
+--         MAX(@tiktok.exposure_date) AS max_date
+--     FROM @tiktok
+--     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+-- ),
+
 unioned_exposures AS (
     SELECT exposure_source, creative_source_id, property_source_id, publisher_id, campaign_id,
            creative_name, placement_name, campaign_name, exposures, min_date, max_date,
@@ -190,6 +207,11 @@ unioned_exposures AS (
     --        creative_name, placement_name, campaign_name, exposures, min_date, max_date,
     --        creative_source_id AS vma_creative_join_key
     -- FROM uber
+    -- UNION ALL
+    -- SELECT exposure_source, creative_source_id, property_source_id, publisher_id, campaign_id,
+    --        creative_name, placement_name, campaign_name, exposures, min_date, max_date,
+    --        creative_source_id AS vma_creative_join_key
+    -- FROM tiktok
 )
 
 -- Final union + VMA mapping join

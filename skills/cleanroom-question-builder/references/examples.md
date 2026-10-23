@@ -70,5 +70,25 @@ Why: a `CODE_OUTPUT` question with no declared output fields never loaded into C
 
 ## Example 8: dates at run time
 
-Runner asks once for `start_date` = 2026-09-01 and `end_date` = 2026-09-30 and fans the one pair out to `START_DATE` / `END_DATE` plus every source's own `_start` / `_end` partition key (for example `amazon.record_date_start` = `2026-09-01 00:00:00`). Non-date values (app id, brand) come from `run-configs/`, and `vma.bfmt_partition` is a constant. The server does not derive any of these. Full list: `skills/cleanroom-question-runner/references/partition-parameters.md`.
+Runner asks once for `start_date` = 2026-09-01 and `end_date` = 2026-09-30 and fans the one pair out to `START_DATE` / `END_DATE` plus every source's own `_start` / `_end` partition key (for example `amazon.record_date_start` = `2026-09-01 00:00:00`). Non-date values (app id, brand) come from `run-configs/`, and `vma.bfmt_partition` is asked from the user at every run. The server does not derive any of these. Full list: `skills/cleanroom-question-runner/references/partition-parameters.md`.
 
+
+## Example 10: no ad server data
+
+Spec: `digital_pixel` selected, `adserver_data`: no.
+Expected edits: `python3 scripts/remove_adserver.py` is run on the SQL. In the `snowplow` CTE both `LEFT JOIN @adserver` clauses are gone and `creative_name`, `placement_name`, `campaign_name` are `CAST(NULL AS STRING)`; nothing else changes. Validator: PASS. The submit SQL contains no `@adserver`, so the setup summary table has no `adserver` row and the user is never asked for an ad server dataset.
+Not expected: leaving `@adserver` in the SQL and binding a dummy dataset, or hand-editing the joins.
+
+## Example 11: TikTok source
+
+Spec: `exposure_sources = ["digital_pixel", "amazon", "meta", "uber", "tiktok"]`.
+Expected edits: uncomment the `tiktok` CTE and its `UNION ALL` branch in `unioned_exposures`; everything else as for the other selected sources. Validator: PASS, no column-macro warning for `tiktok` (plain `@tiktok.<column>` references).
+Setup summary row: `tiktok | <dataset name> | <full dataset id> | @tiktok.ad_id | @tiktok.adgroup_id`.
+Column names are written for `tiktok_habu_lcr-tiktok_kdp_xmi_exposures_v1` (`adgroup_id`, `adgroup_name`). The non-v1 dataset calls the id `ad_group_id`, so compare the bound dataset's fields with the CTE before the Review gate. Not yet live-trialed.
+
+## Example 11: a source that is not built in (Snapchat)
+
+Spec: field 3 includes `other`; field 8: `name` Snapchat, `dataset` a CONFIGURED dataset. The builder reads the dataset's fields and proposes `creative_id` = `ad_id`, `property_id` = `adgroup_id`, `campaign_id` = `campaign_id`, `creative_name` = `ad_name`, `date_column` = `impression_ts` (LONG epoch seconds, so `date_kind: epoch_seconds`, `date_filter: sql`); the user confirms it at the Review gate.
+Expected edit: `python3 scripts/add_exposure_source.py question.sql question.sql spec.json` adds a `snapchat` CTE (label `snapchat_direct`, publisher `'snapchat'`, ids cast to STRING, missing name columns `CAST(NULL AS STRING)`, `WHERE ... BETWEEN '@START_DATE' AND '@END_DATE'`) before `unioned_exposures` and one `UNION ALL` branch at its end. Validator: PASS with one expected warning, `macro @snapchat is not in the template`. `@snapchat` then appears in the dataset-bindings table and the setup summary; `hasDateParameters` is true.
+Not expected: hand-written SQL for the source, a guessed mapping applied without showing it, or `TikTok` added this way (it is built in: select it in field 3).
+Same example with a DATE column that is a configured date partition: `date_filter: partition`; the CTE has no date filter and the runner submits `snapchat.<date_column>_start` / `_end`.

@@ -47,4 +47,57 @@ echo "${good/uber.brand/uber.event_date_start}" > "$rc/22222222-2222-4222-8222-2
 python3 scripts/check_run_configs.py "$tmp/rc" >/dev/null && { echo "date-like partition should fail"; exit 1; }
 python3 scripts/check_run_configs.py >/dev/null || { echo "repo run-configs should pass"; exit 1; }
 
+# 9. No ad server data: joins removed, still valid, no @adserver left after the submit prep.
+python3 scripts/remove_adserver.py "$tpl" "$tmp/f.sql" >/dev/null || { echo "remove_adserver failed on the template"; exit 1; }
+python3 "$v" "$tmp/f.sql" >/dev/null || { echo "SQL without ad server should validate"; exit 1; }
+python3 scripts/prepare_submit_sql.py "$tmp/f.sql" "$tmp/g.sql"
+python3 "$v" "$tmp/g.sql" --submit >/dev/null || { echo "SQL without ad server should pass --submit"; exit 1; }
+grep -q '@adserver' "$tmp/g.sql" && { echo "@adserver still in SQL after removal"; exit 1; }
+grep -q 'CAST(NULL AS STRING) AS creative_name' "$tmp/g.sql" || { echo "ad server columns were not nulled"; exit 1; }
+sed "s/LEFT JOIN @adserver c_ads/LEFT JOIN @adserver c_x/" "$tpl" > "$tmp/h.sql"
+python3 scripts/remove_adserver.py "$tmp/h.sql" "$tmp/i.sql" >/dev/null && { echo "expected FAIL when the template drifts"; exit 1; }
+
+# 11. Custom exposure source: instantiated from the generic template, valid, summarized, collision-safe.
+echo '{"name":"Snapchat","creative_id":"ad_id","property_id":"adgroup_id","campaign_id":"campaign_id","creative_name":"ad_name","date_column":"impression_ts","date_kind":"epoch_seconds","date_filter":"sql"}' > "$tmp/sc.json"
+python3 scripts/add_exposure_source.py "$tpl" "$tmp/t1.sql" "$tmp/sc.json" >/dev/null || { echo "add_exposure_source failed"; exit 1; }
+python3 "$v" "$tmp/t1.sql" >/dev/null || { echo "SQL with a custom source should validate"; exit 1; }
+grep -q "BETWEEN '@START_DATE' AND '@END_DATE'" "$tmp/t1.sql" || { echo "sql date filter missing"; exit 1; }
+grep -q "CAST(NULL AS STRING) AS placement_name" "$tmp/t1.sql" || { echo "absent name column should be NULL"; exit 1; }
+python3 scripts/prepare_submit_sql.py "$tmp/t1.sql" "$tmp/t2.sql"
+python3 "$v" "$tmp/t2.sql" --submit >/dev/null || { echo "custom source SQL should pass --submit"; exit 1; }
+python3 scripts/summarize_question.py "$tmp/t2.sql" | grep -q '"snapchat"' || { echo "summarizer missed the custom source"; exit 1; }
+# a second source stacks; a partition source has no SQL date filter; collisions and bad specs fail.
+echo '{"name":"Snap","creative_id":"a","campaign_id":"c","date_column":"d","date_kind":"timestamp","date_filter":"partition"}' > "$tmp/sn.json"
+python3 scripts/add_exposure_source.py "$tmp/t1.sql" "$tmp/t3.sql" "$tmp/sn.json" >/dev/null || { echo "second source failed"; exit 1; }
+python3 "$v" "$tmp/t3.sql" >/dev/null || { echo "two custom sources should validate"; exit 1; }
+[ "$(grep -c "BETWEEN '@START_DATE'" "$tmp/t3.sql")" = "2" ] || { echo "partition source must not add a SQL date filter (expect Meta + Snapchat only)"; exit 1; }
+python3 scripts/add_exposure_source.py "$tmp/t1.sql" "$tmp/t4.sql" "$tmp/sc.json" >/dev/null && { echo "expected FAIL on duplicate source"; exit 1; }
+echo '{"name":"Amazon","creative_id":"a","campaign_id":"c","date_column":"d","date_kind":"date"}' > "$tmp/am.json"
+python3 scripts/add_exposure_source.py "$tpl" "$tmp/t5.sql" "$tmp/am.json" >/dev/null && { echo "expected FAIL on macro collision"; exit 1; }
+echo '{"name":"X1","creative_id":"a b","campaign_id":"c","date_column":"d","date_kind":"date"}' > "$tmp/bad.json"
+python3 scripts/add_exposure_source.py "$tpl" "$tmp/t6.sql" "$tmp/bad.json" >/dev/null && { echo "expected FAIL on bad column name"; exit 1; }
+echo '{"name":"X2","creative_id":"a","campaign_id":"c","date_column":"d","date_kind":"epoch_seconds","date_filter":"partition"}' > "$tmp/bad2.json"
+python3 scripts/add_exposure_source.py "$tpl" "$tmp/t7.sql" "$tmp/bad2.json" >/dev/null && { echo "expected FAIL on epoch partition"; exit 1; }
+
+# 10. TikTok: uncommenting its CTE and union branch validates, passes --submit, and the summarizer reads its keys.
+python3 - "$tpl" "$tmp/j.sql" <<'PY'
+import re, sys
+t = open(sys.argv[1]).read()
+def unc(t, start, end):
+    i = t.index(start); j = t.index(end, i)
+    blk = re.sub(r"^(\s*)-- ?", r"\1", t[i:j], flags=re.M)
+    return t[:i] + blk + t[j:]
+t = unc(t, "-- tiktok AS (", "unioned_exposures AS (")
+t = unc(t, "    -- UNION ALL\n    -- SELECT exposure_source, creative_source_id, property_source_id, publisher_id, campaign_id,\n    --        creative_name, placement_name, campaign_name, exposures, min_date, max_date,\n    --        creative_source_id AS vma_creative_join_key\n    -- FROM tiktok", ")\n\n-- Final")
+open(sys.argv[2], "w").write(t)
+PY
+python3 "$v" "$tmp/j.sql" >/dev/null || { echo "SQL with tiktok should validate"; exit 1; }
+python3 scripts/prepare_submit_sql.py "$tmp/j.sql" "$tmp/k.sql"
+python3 "$v" "$tmp/k.sql" --submit >/dev/null || { echo "SQL with tiktok should pass --submit"; exit 1; }
+python3 scripts/summarize_question.py "$tmp/k.sql" > "$tmp/sum2.json"
+grep -q '"@tiktok.adgroup_id"' "$tmp/sum2.json" || { echo "summarizer missed tiktok property key"; exit 1; }
+grep -q 'FROM tiktok' "$tmp/k.sql" || { echo "tiktok union branch missing"; exit 1; }
+echo '{"name":"TikTok","creative_id":"a","campaign_id":"c","date_column":"d","date_kind":"date"}' > "$tmp/tk.json"
+python3 scripts/add_exposure_source.py "$tpl" "$tmp/t8.sql" "$tmp/tk.json" >/dev/null && { echo "expected FAIL: tiktok is a built-in source"; exit 1; }
+
 echo PASS
