@@ -1,0 +1,8 @@
+{
+  "clean_room_id": "e08158a9-3016-47bd-ae83-dd2efb716c3e",
+  "clean_room_name": "Kohler x /L Measurement Solutions Clean Room",
+  "question_id": "056e3e9a-d83e-4030-89a2-d2da7fa35df3",
+  "question_title": "Kohler - Cross-Platform Exposure Mapping",
+  "partitions": { "snowplow_exposures.app_id": "kohler-60fd0d18-7347-4507-875d-3148b41cef47" },
+  "updated_at": "2026-10-27"
+}
