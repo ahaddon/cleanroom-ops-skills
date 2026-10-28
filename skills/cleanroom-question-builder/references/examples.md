@@ -21,13 +21,13 @@ Not in the SQL: the report date range (passed as run parameters) and the dataset
 ## Example 2: Amazon and Meta only
 
 Spec: `exposure_sources = ["amazon", "meta"]`, `digital_mapping` not asked (no `digital_pixel`).
-Expected edits: delete the `snowplow` and `dtv` CTEs and their two `UNION ALL` branches; keep `PivotedCuts`, `amazon`, `meta`, `unioned_exposures` (two branches) and the final SELECT unchanged.
+Expected edits: delete the `snowplow` and `dtv` CTEs and their two `UNION ALL` branches; keep `amazon`, `meta` and `unioned_exposures` (two branches) unchanged; the cuts come only from `scripts/build_vma_cuts.py` (default spec: all six standard cuts).
 Validator: PASS. Bind only the macros left in the SQL.
 
 ## Example 3: failure the validator must catch
 
-Spec as example 1, but someone changes `'custom_cut_1'` in `PivotedCuts`.
-Expected: `FAIL: LOCKED: PivotedCuts block was modified or removed`. Builder fixes the SQL and re-validates; it never shows the failing SQL as final.
+Spec as example 1, but someone hand-edits `PivotedCuts` (renames the `publisher` cut, removes it, or adds a `CASE` to a cut column).
+Expected: `FAIL: LOCKED: PivotedCuts contains something other than generated cut lines` or `PivotedCuts: channel, property and publisher are always required`. Builder fixes the SQL and re-validates; it never shows the failing SQL as final.
 
 ## Example 4: choosing the VMA mapping dataset
 
@@ -92,3 +92,10 @@ Spec: field 3 includes `other`; field 8: `name` Snapchat, `dataset` a CONFIGURED
 Expected edit: `python3 scripts/add_exposure_source.py question.sql question.sql spec.json` adds a `snapchat` CTE (label `snapchat_direct`, publisher `'snapchat'`, ids cast to STRING, missing name columns `CAST(NULL AS STRING)`, `WHERE ... BETWEEN '@START_DATE' AND '@END_DATE'`) before `unioned_exposures` and one `UNION ALL` branch at its end. Validator: PASS with one expected warning, `macro @snapchat is not in the template`. `@snapchat` then appears in the dataset-bindings table and the setup summary; `hasDateParameters` is true.
 Not expected: hand-written SQL for the source, a guessed mapping applied without showing it, or `TikTok` added this way (it is built in: select it in field 3).
 Same example with a DATE column that is a configured date partition: `date_filter: partition`; the CTE has no date filter and the runner submits `snapchat.<date_column>_start` / `_end`.
+
+## Example 12: choosing cuts
+
+Spec: field 9 `campaign, subbrand` (creative not selected); field 10: "Media Type" slot 1 and "Audience Name" slot 3; field 11: Audience Name at creative level.
+`cuts.json`: `{"standard": ["campaign", "subbrand"], "custom": [{"name": "Media Type", "slot": 1}, {"name": "Audience Name", "slot": 3, "level": "creative"}]}`.
+Expected edit: `python3 scripts/build_vma_cuts.py question.sql question.sql cuts.json` writes `PivotedCuts` with `campaign, channel, property, publisher, subbrand, custom_cut_1 AS media_type, custom_cut_3 AS audience_name`, the same columns in the final `SELECT` (`audience_name` from `vma_cr`, the rest from `vma_prop`), `BROADCAST(vma_prop, vma_cr)` and both joins. Without a creative-level cut the `vma_cr` join and its hint entry are removed. `channel`, `property` and `publisher` are present even though the user never selected them. `scripts/output_fields.py` then lists the 8 base columns, the 7 cut columns and the 2 dates as dimensions.
+Not expected: a `CASE` on `exposure_source = 'meta'`, `custom_cut_9`, a custom cut named `channel`, or more than 7 custom cuts. `media_type` and `audience_name` are only examples; there are no default custom cuts.

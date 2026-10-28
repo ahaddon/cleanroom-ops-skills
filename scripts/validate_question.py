@@ -5,6 +5,7 @@ Usage: scripts/validate_question.py <generated.sql> [--template <template.sql>]
 
 Exit 0 = PASS (warnings allowed), 1 = FAIL. Comments are stripped before comparing,
 so toggling commented-out source blocks never trips the locked-region checks.
+VMA cuts are checked by rule (generated form, mandatory channel/property/publisher), not verbatim.
 """
 from __future__ import annotations
 
@@ -18,12 +19,23 @@ DEFAULT_TEMPLATE = (
     / "skills/cleanroom-question-builder/references/cross-platform-exposure-mapping.sql"
 )
 
-PIVOTED_RE = re.compile(r"PivotedCuts AS \(.*?GROUP BY map_id\s*\)", re.S)
+PIVOTED_RE = re.compile(r"PivotedCuts AS \((.*?)GROUP BY map_id\s*\)", re.S)
+CUT_LINE_RE = re.compile(r"MAX\(CASE WHEN cut_name = '([a-z0-9_]+)' THEN map_name END\) AS ([a-z][a-z0-9_]*)")
+STANDARD_CUTS = ["campaign", "channel", "property", "publisher", "subbrand", "creative"]
+MANDATORY_CUTS = {"channel", "property", "publisher"}
+CUSTOM_CUT_RE = re.compile(r"^custom_cut_[1-7]$")
+RESERVED_ALIASES = {
+    "exposure_source", "creative_source_id", "property_source_id", "publisher_id", "campaign_id",
+    "creative_name", "placement_name", "campaign_name", "total_exposures", "min_exposure_date",
+    "max_exposure_date", "run_id", "is_deleted", "map_id", "exposures", "min_date", "max_date",
+} | set(STANDARD_CUTS)
+ALIAS_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+PROP_JOIN = "LEFT JOIN PivotedCuts vma_prop ON u.property_source_id = vma_prop.map_id"
+CR_JOIN = "LEFT JOIN PivotedCuts vma_cr ON u.vma_creative_join_key = vma_cr.map_id"
 META_FILTER = (
     "WHERE TO_DATE(TIMESTAMP_SECONDS(INT(@meta.ts))) "
     "BETWEEN '@START_DATE' AND '@END_DATE'"
 )
-FINAL_RE = re.compile(r"SELECT /\*\+ BROADCAST.*\Z", re.S)
 MACRO_RE = re.compile(r"@[A-Za-z_][A-Za-z0-9_]*")
 
 
@@ -46,6 +58,68 @@ def unioned_sources(sql: str) -> list[str]:
     return re.findall(r"\bFROM\s+([A-Za-z_][A-Za-z0-9_]*)", m.group(1)) if m else []
 
 
+def check_cuts(gen: str) -> list[str]:
+    """VMA cuts: PivotedCuts holds only generated cut lines, the final SELECT agrees with it."""
+    errs: list[str] = []
+    m = PIVOTED_RE.search(gen)
+    if not m:
+        return ["LOCKED: PivotedCuts block is missing"]
+    body = norm(m.group(1))
+    cuts = CUT_LINE_RE.findall(body)
+    skeleton = norm(CUT_LINE_RE.sub("X", body))
+    if not cuts or skeleton != "SELECT map_id, " + ", ".join(["X"] * len(cuts)) + " FROM @vma":
+        errs.append("LOCKED: PivotedCuts contains something other than generated cut lines (use scripts/build_vma_cuts.py)")
+        return errs
+    names = [c for c, _ in cuts]
+    aliases = [a for _, a in cuts]
+    if len(set(names)) != len(names):
+        errs.append("PivotedCuts: a cut_name appears twice")
+    if len(set(aliases)) != len(aliases):
+        errs.append("PivotedCuts: an output column name appears twice")
+    for name, alias in cuts:
+        if name in STANDARD_CUTS:
+            if alias != name:
+                errs.append(f"PivotedCuts: standard cut '{name}' must be named '{name}', not '{alias}'")
+        elif CUSTOM_CUT_RE.match(name):
+            if not ALIAS_RE.match(alias) or alias in RESERVED_ALIASES:
+                errs.append(f"PivotedCuts: custom cut '{name}' has a reserved or invalid column name '{alias}'")
+        else:
+            errs.append(f"PivotedCuts: unknown cut_name '{name}' (standard cuts or custom_cut_1..custom_cut_7)")
+    missing = MANDATORY_CUTS - set(names)
+    if missing:
+        errs.append(f"PivotedCuts: channel, property and publisher are always required; missing {sorted(missing)}")
+    if sum(1 for n in names if CUSTOM_CUT_RE.match(n)) > 7:
+        errs.append("PivotedCuts: at most 7 custom cuts")
+
+    f = re.search(r"SELECT /\*\+ BROADCAST\(([^)]*)\) \*/(.*?)\bFROM unioned_exposures u\b(.*)\Z", gen, re.S)
+    if not f or "MAX(u.max_date) AS max_exposure_date," not in f.group(2):
+        return errs + ["final SELECT not found or changed; cut columns cannot be checked"]
+    hint = {h.strip() for h in f.group(1).split(",") if h.strip()}
+    tail = f.group(2).split("MAX(u.max_date) AS max_exposure_date,", 1)[1]
+    item_re = re.compile(r"ANY_VALUE\((vma_prop|vma_cr)\.([a-z][a-z0-9_]*)\) AS ([a-z][a-z0-9_]*)")
+    items = item_re.findall(tail)
+    if norm(item_re.sub("X", tail)).replace(" ", "") != ",".join(["X"] * len(items)):
+        errs.append("LOCKED: final SELECT cut columns are not in the generated form `ANY_VALUE(vma_prop|vma_cr.col) AS col`")
+    if [a for _, _, a in items] != aliases:
+        errs.append("final SELECT cut columns do not match PivotedCuts (same names, same order)")
+    used = set()
+    for join, col, out in items:
+        used.add(join)
+        if col != out:
+            errs.append(f"final SELECT: {join}.{col} must be aliased '{col}', not '{out}'")
+        if out in MANDATORY_CUTS and join != "vma_prop":
+            errs.append(f"final SELECT: '{out}' must read from the property-level join (vma_prop)")
+    used.add("vma_prop")
+    if hint != used:
+        errs.append(f"BROADCAST hint {sorted(hint)} must list exactly the joins in use {sorted(used)}")
+    rest = f.group(3)
+    if PROP_JOIN not in rest:
+        errs.append("LOCKED: the vma_prop join is missing or changed")
+    if ("vma_cr" in used) != (CR_JOIN in rest):
+        errs.append("the vma_cr join must be present exactly when a cut reads from vma_cr")
+    return errs
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("generated")
@@ -62,21 +136,12 @@ def main() -> int:
     gen = norm(strip_comments(gen_raw))
     errors, warnings = [], []
 
-    # 1. Locked: PivotedCuts must be verbatim.
-    m = PIVOTED_RE.search(tpl)
-    if not m:
-        errors.append("template is missing the PivotedCuts block (template problem)")
-    elif norm(m.group(0)) not in gen:
-        errors.append("LOCKED: PivotedCuts block was modified or removed")
+    # 1. VMA cuts: generated form only (see check_cuts).
+    errors.extend(check_cuts(gen))
 
     # 2. Locked: Meta date filter, when Meta is used.
     if "@meta" in gen and norm(META_FILTER) not in gen:
         errors.append("LOCKED: Meta @START_DATE/@END_DATE filter was modified or removed")
-
-    # 3. Final SELECT should match the template (warning: review if changed).
-    fm = FINAL_RE.search(tpl)
-    if fm and norm(fm.group(0)) not in gen:
-        warnings.append("final SELECT/VMA join differs from the template; confirm intentional")
 
     # 4. Every unioned source must be defined; every defined source should be unioned.
     ctes = set(cte_names(gen))

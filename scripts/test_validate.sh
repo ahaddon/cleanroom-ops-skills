@@ -9,8 +9,8 @@ tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 # 1. The template validates against itself.
 python3 "$v" "$tpl" >/dev/null || { echo "template does not validate against itself"; exit 1; }
 
-# 2. Modifying PivotedCuts must fail.
-sed "s/'custom_cut_1'/'custom_cut_9'/" "$tpl" > "$tmp/a.sql"
+# 2. Hand-modifying PivotedCuts (a mandatory cut renamed) must fail.
+sed "s/cut_name = 'channel'/cut_name = 'chanel'/" "$tpl" > "$tmp/a.sql"
 python3 "$v" "$tmp/a.sql" >/dev/null && { echo "expected FAIL on PivotedCuts edit"; exit 1; }
 
 # 3. Changing the Meta date filter must fail.
@@ -147,5 +147,45 @@ PY
 rc=0; out=$(bash scripts/session_start_check.sh 2>&1) || rc=$?
 [ "$rc" -eq 0 ] || { echo "session_start_check.sh must always exit 0"; exit 1; }
 echo "$out" | grep -q 'cleanroom-ops freshness' || { echo "session_start_check.sh printed no freshness message"; exit 1; }
+
+# 12. VMA cuts: generated from a spec; mandatory cuts always present; rules enforced.
+echo '{"standard":["campaign","subbrand","creative"],"custom":[{"name":"Media Type","slot":1},{"name":"audience_name","slot":3,"level":"creative"}]}' > "$tmp/c1.json"
+python3 scripts/build_vma_cuts.py "$tpl" "$tmp/u1.sql" "$tmp/c1.json" >/dev/null || { echo "build_vma_cuts failed"; exit 1; }
+python3 "$v" "$tmp/u1.sql" >/dev/null || { echo "generated cuts should validate"; exit 1; }
+grep -q "cut_name = 'custom_cut_3' THEN map_name END) AS audience_name" "$tmp/u1.sql" || { echo "custom slot 3 not mapped"; exit 1; }
+grep -q "ANY_VALUE(vma_cr.audience_name) AS audience_name" "$tmp/u1.sql" || { echo "creative-level custom cut should read vma_cr"; exit 1; }
+python3 scripts/prepare_submit_sql.py "$tmp/u1.sql" "$tmp/u2.sql"
+python3 "$v" "$tmp/u2.sql" --submit >/dev/null || { echo "generated cuts should pass --submit"; exit 1; }
+python3 scripts/output_fields.py "$tmp/u2.sql" | grep -q '"media_type"' || { echo "output_fields missed the custom cut"; exit 1; }
+python3 scripts/output_fields.py "$tmp/u2.sql" | grep -q '"subbrand"' || { echo "output_fields missed subbrand"; exit 1; }
+# minimal cuts: only channel, property, publisher; the creative join and its hint entry disappear.
+echo '{"standard":[]}' > "$tmp/c2.json"
+python3 scripts/build_vma_cuts.py "$tpl" "$tmp/u3.sql" "$tmp/c2.json" >/dev/null || { echo "minimal cuts failed"; exit 1; }
+python3 "$v" "$tmp/u3.sql" >/dev/null || { echo "minimal cuts should validate"; exit 1; }
+grep -q "BROADCAST(vma_prop) " "$tmp/u3.sql" || { echo "hint should list only vma_prop"; exit 1; }
+grep -q "LEFT JOIN PivotedCuts vma_cr" "$tmp/u3.sql" && { echo "unused vma_cr join should be removed"; exit 1; }
+grep -q "AS campaign\b" "$tmp/u3.sql" && { echo "campaign should be absent when not selected"; exit 1; }
+# validator rules (hand edits must fail).
+grep -v "cut_name = 'publisher'" "$tpl" > "$tmp/n1.sql"
+python3 "$v" "$tmp/n1.sql" >/dev/null && { echo "expected FAIL: publisher cut removed"; exit 1; }
+sed "s/cut_name = 'creative'/cut_name = 'custom_cut_9'/" "$tpl" > "$tmp/n2.sql"
+python3 "$v" "$tmp/n2.sql" >/dev/null && { echo "expected FAIL: custom_cut_9"; exit 1; }
+sed "s/ANY_VALUE(vma_prop.campaign) AS campaign/CASE WHEN u.exposure_source = 'meta' THEN ANY_VALUE(vma_cr.campaign) ELSE ANY_VALUE(vma_prop.campaign) END AS campaign/" "$tpl" > "$tmp/n3.sql"
+python3 "$v" "$tmp/n3.sql" >/dev/null && { echo "expected FAIL: hand-written CASE in the cut columns"; exit 1; }
+grep -v "ANY_VALUE(vma_prop.subbrand)" "$tpl" > "$tmp/n4.sql"
+python3 "$v" "$tmp/n4.sql" >/dev/null && { echo "expected FAIL: SELECT does not match PivotedCuts"; exit 1; }
+sed "s/ANY_VALUE(vma_prop.channel) AS channel/ANY_VALUE(vma_cr.channel) AS channel/" "$tpl" > "$tmp/n5.sql"
+python3 "$v" "$tmp/n5.sql" >/dev/null && { echo "expected FAIL: channel must read vma_prop"; exit 1; }
+# generator rules.
+for bad in '{"standard":[],"custom":[{"name":"channel","slot":1}]}' '{"standard":[],"custom":[{"name":"x","slot":8}]}' \
+  '{"standard":[],"custom":[{"name":"a","slot":1},{"name":"b","slot":1}]}' '{"standard":["nope"]}' \
+  '{"standard":[],"levels":{"channel":"creative"}}' '{"standard":[],"custom":[{"name":"a b!","slot":1,"level":"sideways"}]}' \
+  '{"standard":[],"custom":[{"name":"c1","slot":1},{"name":"c2","slot":2},{"name":"c3","slot":3},{"name":"c4","slot":4},{"name":"c5","slot":5},{"name":"c6","slot":6},{"name":"c7","slot":7},{"name":"c8","slot":1}]}'; do
+  echo "$bad" > "$tmp/bad.json"
+  python3 scripts/build_vma_cuts.py "$tpl" "$tmp/x.sql" "$tmp/bad.json" >/dev/null && { echo "expected FAIL for cuts spec: $bad"; exit 1; }
+done
+# custom sources and ad server removal still compose with custom cuts.
+python3 scripts/add_exposure_source.py "$tmp/u1.sql" "$tmp/u4.sql" "$tmp/sc.json" >/dev/null || { echo "source on top of custom cuts failed"; exit 1; }
+python3 "$v" "$tmp/u4.sql" >/dev/null || { echo "source + custom cuts should validate"; exit 1; }
 
 echo PASS

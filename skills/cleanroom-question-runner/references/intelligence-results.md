@@ -30,7 +30,7 @@ Confirmed on a live run (CRQ-234564): `COUNT_IF` per column for null counts, a `
 - Row count: `SELECT COUNT(*) FROM T WHERE RUN_ID = :run`
 - Null rate and 100%-null columns: use `cleanroom_get_results_table_profile`, or `SELECT COUNT(*) - COUNT(col) ... FROM T WHERE RUN_ID = :run` per column.
 - Duplicate rows: `SELECT COUNT(*) FROM (SELECT <all columns>, COUNT(*) c FROM T WHERE RUN_ID = :run GROUP BY ALL HAVING c > 1)`
-- VMA mapping coverage by source: `SELECT exposure_source, AVG(IFF(channel IS NULL,1,0)), AVG(IFF(publisher IS NULL,1,0)), AVG(IFF(property IS NULL,1,0)), AVG(IFF(creative IS NULL,1,0)) FROM T WHERE RUN_ID = :run GROUP BY exposure_source`
+- VMA mapping coverage by source, one `AVG(IFF(<cut> IS NULL,1,0))` per cut column the question has (`channel`, `property`, `publisher` always, plus the selected standard and custom cuts; names from the question's dimensions): `SELECT exposure_source, AVG(IFF(channel IS NULL,1,0)), AVG(IFF(publisher IS NULL,1,0)), AVG(IFF(property IS NULL,1,0)) /* , one per extra cut */ FROM T WHERE RUN_ID = :run GROUP BY exposure_source`
 - Exposure totals: `SELECT COUNT(*) FROM T WHERE RUN_ID = :run AND total_exposures <= 0`
 - Date range per source: `SELECT exposure_source, MIN(min_exposure_date), MAX(max_exposure_date) FROM T WHERE RUN_ID = :run GROUP BY exposure_source`
 - Source presence: `SELECT DISTINCT exposure_source FROM T WHERE RUN_ID = :run`

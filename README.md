@@ -44,5 +44,5 @@ Shared across the team (committed): `run-configs/<clean-room-id>/<question-id>.j
 
 - `CLAUDE.md` describes the layout and the rules for changing skills.
 - Each skill has a `SKILL.md` (rules and a numbered pipeline) and a `references/` folder (input schema, template, checks, examples). Add a new per-client variable to the skill's input schema first.
-- Locked SQL regions (`PivotedCuts`, the Meta date filter, macro names) are enforced by `scripts/validate_question.py`. Run `bash scripts/test_validate.sh` after any change to the template or validator.
+- Locked SQL regions (the Meta date filter, macro names) and the generated VMA cuts (`PivotedCuts`, built by `scripts/build_vma_cuts.py`; `channel`, `property`, `publisher` always present) are enforced by `scripts/validate_question.py`. Run `bash scripts/test_validate.sh` after any change to the template or validator.
 - A change is not done until it passes a live trial against a sandbox clean room. Record confirmed values in the skill's `examples.md` or inputs file.

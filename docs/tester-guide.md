@@ -42,6 +42,7 @@ Claude follows a fixed flow. Expect these, in this order:
    - Clean room: your sandbox clean room.
    - Client name: a test name (it becomes the question title: `<client> - Cross-Platform Exposure Mapping`).
    - Exposure sources: pick the ones your sandbox has data for.
+   - Cuts: pick the optional standard cuts (campaign, subbrand, creative; channel, property and publisher are always included) and list any custom cuts with the VMA slot each maps to. Leave custom cuts empty if you have none.
    - Digital mapping and ad server data: answer as asked. Answer no to "Are you currently using ad server data..." if you have no ad server connection; the joins are removed and you are not asked for an ad server dataset.
 2. **Dataset choices.** For each data source Claude lists your datasets. For the VMA mapping, the datasets starting with `PROD Value Mapping` appear first and are marked. Pick the right one.
 3. **Setup summary table.** Check every row before saying yes: macro, dataset name, dataset ID, creative join key, property join key. A row showing `NOT MAPPED` means a column mapping is missing; Claude will not continue until it is fixed.
